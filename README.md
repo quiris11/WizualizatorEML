@@ -46,6 +46,22 @@ która odbiera zdarzenia otwarcia pliku (`on open`) i przekazuje ścieżkę do s
 
 ---
 
+## Użycie bez instalacji — bezpośrednio w przeglądarce
+
+Plik `EML-Gmail.html` można używać **samodzielnie, bez instalacji**. Wystarczy otworzyć go w przeglądarce i wczytać plik `.eml` ręcznie:
+
+1. Otwórz `EML-Gmail.html` w przeglądarce (dwuklik lub `Plik → Otwórz`)
+2. Przeciągnij plik `.eml` na strefę upuszczania **lub** kliknij `Wybierz plik .eml`
+3. Wizualizator wyświetli treść wiadomości
+
+Jest to przydatne gdy:
+- chcesz podejrzeć pojedynczy plik bez instalowania czegokolwiek
+- używasz komputera bez uprawnień administratora (`sudo`)
+
+> **Uwaga:** w tym trybie dwuklik na plik `.eml` w menedżerze plików nie działa automatycznie — plik `.eml` trzeba wczytać ręcznie przez interfejs strony. Automatyczny dwuklik wymaga instalacji przez `setup-linux.sh` lub `setup-macos.sh`.
+
+---
+
 ## ⚠️ Przed instalacją
 
 Wszystkie cztery pliki muszą znajdować się w **tym samym katalogu**:
