@@ -9,7 +9,7 @@
 set -euo pipefail
 
 SCRIPT_SRC="./eml-gmail.sh"
-TEMPLATE_SRC="./EML-Gmail-v9.html"
+TEMPLATE_SRC="./EML-Gmail.html"
 
 BIN_DEST="/usr/local/bin/eml-gmail"
 TEMPLATE_DEST="/usr/local/share/eml-gmail/index.html"
