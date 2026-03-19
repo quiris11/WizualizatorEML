@@ -301,6 +301,10 @@
           <div class="preview-label">Do</div>
           <div class="preview-value" id="previewTo"></div>
         </div>
+        <div class="preview-row" id="rowCc" style="display:none">
+          <div class="preview-label">CC</div>
+          <div class="preview-value" id="previewCc"></div>
+        </div>
         <div class="preview-row">
           <div class="preview-label">Temat</div>
           <div class="preview-value" id="previewSubject"></div>
@@ -377,7 +381,11 @@ function processEmlFile(file) {
             currentParsedData = parsed;
 
             document.getElementById('previewFrom').textContent    = parsed.from;
-            document.getElementById('previewTo').textContent      = parsed.email;
+            document.getElementById('previewTo').textContent      = parsed.to || '(brak informacji — prawdopodobnie BCC)';
+            if (parsed.cc) {
+                document.getElementById('previewCc').textContent = parsed.cc;
+                document.getElementById('rowCc').style.display = '';
+            }
             document.getElementById('previewSubject').textContent = parsed.subject;
             document.title = parsed.subject || 'Podgląd EML';
 
@@ -590,6 +598,12 @@ function parseEml(text) {
     const emailMatch  = from.match(/[\w.+-]+@[\w.-]+\.\w+/);
     const email       = emailMatch ? emailMatch[0] : '';
 
+    const toRaw    = headers['to'] || '';
+    const decodedTo = decodeHeader(toRaw);
+
+    const ccRaw    = headers['cc'] || '';
+    const decodedCc = decodeHeader(ccRaw);
+
     let subject = decodeHeader(headers['subject'] || '');
     const replySubject = subject.startsWith('Re: ') ? subject : 'Re: ' + subject;
 
@@ -611,7 +625,7 @@ function parseEml(text) {
     }
 
     return {
-        email, from: decodedFrom, date: headers['date'],
+        email, from: decodedFrom, to: decodedTo, cc: decodedCc, date: headers['date'],
         subject, replySubject, body, htmlBody,
         replyBody, replyBodyHtml,
         messageId: headers['message-id'], references: headers['references'],
