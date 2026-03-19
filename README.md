@@ -44,6 +44,9 @@ dla typu MIME `message/rfc822`, który obejmuje pliki `.eml`.
 **Na macOS** — instalator tworzy aplikację `.app` skompilowaną z AppleScript,
 która odbiera zdarzenia otwarcia pliku (`on open`) i przekazuje ścieżkę do skryptu.
 
+**Na Windows** — instalator rejestruje skojarzenie `.eml` w rejestrze systemowym
+(`HKCU\Software\Classes`) i wywołuje skrypt PowerShell przy każdym otwarciu pliku.
+
 ---
 
 ## Użycie bez instalacji — bezpośrednio w przeglądarce
@@ -58,7 +61,7 @@ Jest to przydatne gdy:
 - chcesz podejrzeć pojedynczy plik bez instalowania czegokolwiek
 - używasz komputera bez uprawnień administratora (`sudo`)
 
-> **Uwaga:** w tym trybie dwuklik na plik `.eml` w menedżerze plików nie działa automatycznie — plik `.eml` trzeba wczytać ręcznie przez interfejs strony. Automatyczny dwuklik wymaga instalacji przez `setup-linux.sh` lub `setup-macos.sh`.
+> **Uwaga:** w tym trybie dwuklik na plik `.eml` w menedżerze plików nie działa automatycznie — plik `.eml` trzeba wczytać ręcznie przez interfejs strony. Automatyczny dwuklik wymaga instalacji przez `setup-linux.sh`, `setup-macos.sh` lub `setup-windows.ps1`.
 
 ---
 
@@ -67,10 +70,12 @@ Jest to przydatne gdy:
 Wszystkie cztery pliki muszą znajdować się w **tym samym katalogu**:
 
 ```
-EML-Gmail.html   ← szablon podglądu (wymagany)
-eml-gmail.sh         ← skrypt CLI (wymagany)
+EML-Gmail-v11.html   ← szablon podglądu (wymagany)
+eml-gmail.sh         ← skrypt CLI Linux/macOS (wymagany)
+eml-gmail.ps1        ← skrypt CLI Windows (wymagany)
 setup-linux.sh       ← instalator Linux
 setup-macos.sh       ← instalator macOS
+setup-windows.ps1    ← instalator Windows
 ```
 
 ---
@@ -89,6 +94,16 @@ setup-macos.sh       ← instalator macOS
 |---|---|
 | Python 3 + osacompile | `xcode-select --install` |
 | duti *(opcjonalne, do ustawienia domyślnej aplikacji z CLI)* | `brew install duti` |
+
+---
+
+## Wymagania — Windows
+
+| Zależność | Uwagi |
+|---|---|
+| Windows 10 / 11 | PowerShell 5.1 wbudowany |
+| PowerShell 5.1+ | wbudowany — bez instalacji |
+| Python 3 | **niewymagany** — skrypt używa wbudowanego Base64 PowerShell |
 
 ---
 
@@ -152,6 +167,32 @@ open -a "Wizualizator EML" ~/wiadomosc.eml       # symulacja dwukliku
 
 ---
 
+## Instalacja — Windows (10 / 11)
+
+```powershell
+# Uruchom PowerShell w katalogu z plikami, następnie:
+Set-ExecutionPolicy -Scope Process Bypass
+.\setup-windows.ps1
+```
+
+Instalator automatycznie:
+- Kopiuje skrypt CLI → `%LOCALAPPDATA%\eml-gmail\eml-gmail.ps1`
+- Kopiuje szablon HTML → `%LOCALAPPDATA%\eml-gmail\index.html`
+- Tworzy wrapper `eml-gmail.bat` — wywołanie z CMD/PowerShell jako `eml-gmail`
+- Dodaje katalog instalacji do `PATH` użytkownika
+- Rejestruje skojarzenie `.eml` w rejestrze (`HKCU`) — **bez uprawnień admina**
+- Powiadamia Eksploratora Windows o zmianie skojarzeń
+
+**Test po instalacji** (w nowym oknie PowerShell/CMD):
+```cmd
+eml-gmail C:\Users\user\Pobrane\wiadomosc.eml
+```
+
+> **Uwaga:** po instalacji uruchom **nowe** okno PowerShell lub CMD,
+> żeby zaktualizowany `PATH` zaczął obowiązywać.
+
+---
+
 ## Użycie z terminala
 
 ```bash
@@ -172,10 +213,10 @@ eml-gmail "$(ls -t ~/mail/*.eml | head -1)"
 ```
 Dwuklik .eml
     └─ eml-gmail.sh
-         ├─ Python: czyta .eml → koduje base64
-         ├─ Python: wstrzykuje dane do szablonu HTML
-         ├─ Zapisuje /tmp/eml-gmail-PID.html
-         └─ Otwiera przeglądarkę (xdg-open / open)
+         ├─ Python/PowerShell: czyta .eml → koduje Base64
+         ├─ Python/PowerShell: wstrzykuje dane do szablonu HTML
+         ├─ Zapisuje plik tymczasowy HTML
+         └─ Otwiera przeglądarkę (xdg-open / open / Start-Process)
               └─ JavaScript parsuje EML lokalnie
                    ├─ Nagłówki: From / To / Subject / Date
                    ├─ Dekoduje quoted-printable i base64
