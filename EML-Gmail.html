@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'none';
+                   script-src 'unsafe-inline';
+                   style-src 'unsafe-inline';
+                   img-src data: blob:;
+                   connect-src 'none';
+                   object-src 'none';
+                   base-uri 'none';">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Podgląd EML</title>
+    <style>
+        :root {
+            --bg: #f4f7f2;
+            --panel: #ffffff;
+            --ink: #1e2a1f;
+            --muted: #5a6b5a;
+            --accent: #2f7a48;
+            --accent-2: #c5e0cd;
+            --border: #d5e3d5;
+            --warn: #8f5f00;
+            --ok: #1f6e3a;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: "Avenir Next", "Segoe UI", Tahoma, Arial, sans-serif;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at 10% 10%, #e6f2e8 0%, transparent 45%),
+                radial-gradient(circle at 90% 85%, #e9f5ee 0%, transparent 40%),
+                var(--bg);
+            min-height: 100vh;
+        }
+        .wrap {
+            max-width: 1100px;
+            margin: 32px auto;
+            padding: 0 16px 48px;
+        }
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(25, 60, 35, 0.08);
+            overflow: hidden;
+        }
+        .head {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(135deg, #f0f8f3 0%, #ffffff 75%);
+        }
+        h1 { margin: 0 0 6px; font-size: 1.35rem; letter-spacing: 0.2px; }
+        .sub { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+        .body { padding: 22px 24px; display: grid; gap: 14px; }
+
+        /* Drop zone */
+        .drop-zone {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 28px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+            background: #fbfefb;
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--accent);
+            background: #f0f8f3;
+        }
+        .drop-zone-icon { font-size: 32px; margin-bottom: 8px; }
+        .drop-zone-text { color: var(--ink); font-size: 0.95rem; font-weight: 500; margin-bottom: 4px; }
+        .drop-zone-subtext { color: var(--muted); font-size: 0.85rem; margin-bottom: 10px; }
+        #fileInput { display: none; }
+
+        /* Buttons — base */
+        button {
+            border: 1px solid #26663d;
+            background: var(--accent);
+            color: #fff;
+            border-radius: 10px;
+            padding: 10px 16px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.92rem;
+            transition: opacity 0.15s;
+        }
+        button:hover { opacity: 0.86; }
+        button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+        /* Small action buttons */
+        .btn-action {
+            padding: 6px 14px;
+            font-size: 0.83rem;
+            border-radius: 8px;
+            flex: 0 0 auto;
+        }
+        .btn-action.btn-copy { background: var(--ok); border-color: var(--ok); }
+        .btn-action.btn-secondary {
+            background: #fff;
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+        .btn-action.btn-muted {
+            background: #6c757d;
+            border-color: #5a6268;
+        }
+        .btn-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        /* Status */
+        .status {
+            display: none;
+            border: 1px dashed var(--border);
+            background: #fbfefb;
+            border-radius: 10px;
+            padding: 9px 12px;
+            font-size: 0.88rem;
+        }
+        .status.success { display: block; border-color: var(--accent-2); background: #f0f8f3; color: var(--ok); }
+        .status.error   { display: block; border-color: #f0c0c0; background: #fff5f5; color: #8a0000; }
+
+        /* Metadata table */
+        .preview {
+            display: none;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .preview-row {
+            display: grid;
+            grid-template-columns: 72px 1fr;
+            border-bottom: 1px solid var(--border);
+        }
+        .preview-row:last-child { border-bottom: 0; }
+        .preview-label {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            font-weight: 700;
+            color: var(--muted);
+            padding: 10px 12px;
+            background: #f6fbf7;
+            border-right: 1px solid var(--border);
+        }
+        .preview-value {
+            padding: 9px 12px;
+            font-size: 0.9rem;
+            color: var(--ink);
+            word-break: break-all;
+        }
+
+        /* Full body viewer */
+        .body-viewer {
+            display: none;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .body-viewer-head {
+            padding: 9px 14px;
+            background: #f6fbf7;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        /* Shadow host — izolacja CSS maila od strony */
+        .email-shadow-host {
+            display: block;
+            padding: 0;
+            overflow: auto;
+            max-height: 600px;
+        }
+        #bodyViewerContent pre {
+            padding: 14px 16px;
+            white-space: pre-wrap;
+            font-family: "Avenir Next", "Segoe UI", Tahoma, Arial, sans-serif;
+            font-size: 0.88rem;
+            color: var(--ink);
+            line-height: 1.65;
+            max-height: 520px;
+            overflow-y: auto;
+            margin: 0;
+        }
+
+        /* Attachments */
+        .att-section {
+            display: none;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .att-head {
+            padding: 9px 14px;
+            background: #f6fbf7;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .att-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        .att-table td {
+            padding: 9px 12px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+        .att-table tr:last-child td { border-bottom: 0; }
+        .att-icon { font-size: 1.2rem; }
+        .att-name { font-weight: 500; color: var(--ink); }
+        .att-meta { font-size: 0.78rem; color: var(--muted); }
+        .pill {
+            display: inline-block;
+            border: 1px solid var(--accent-2);
+            background: #f3fbf6;
+            color: var(--ok);
+            border-radius: 999px;
+            padding: 2px 8px;
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+        .btn-dl {
+            border: 1px solid var(--accent);
+            background: #fff;
+            color: var(--accent);
+            border-radius: 8px;
+            padding: 5px 11px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: inherit;
+            white-space: nowrap;
+            transition: background 0.15s;
+        }
+        .btn-dl:hover { background: #f0f8f3; }
+
+        /* Footer */
+        .footer {
+            padding: 14px 24px 18px;
+            color: var(--muted);
+            font-size: 0.83rem;
+            border-top: 1px solid var(--border);
+            background: #fcfffc;
+            line-height: 1.7;
+        }
+        .footer strong { color: var(--ink); }
+
+        @media (max-width: 600px) {
+            .head, .body, .footer { padding-left: 14px; padding-right: 14px; }
+            h1 { font-size: 1.1rem; }
+            .preview-row { grid-template-columns: 56px 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+
+    <div class="head">
+      <h1>📧 Wizualizator EML</h1>
+      <p class="sub">Podgląd i odpowiedź na wiadomości .eml — działa lokalnie w przeglądarce.</p>
+    </div>
+
+    <div class="body">
+
+      <div class="drop-zone" id="dropZone">
+        <div class="drop-zone-icon">📁</div>
+        <div class="drop-zone-text">Przeciągnij plik .eml tutaj</div>
+        <div class="drop-zone-subtext">lub</div>
+        <button onclick="document.getElementById('fileInput').click()">Wybierz plik .eml</button>
+      </div>
+      <input type="file" id="fileInput" accept=".eml" />
+
+      <div id="status" class="status"></div>
+
+      <!-- Metadata -->
+      <div id="preview" class="preview">
+        <div class="preview-row">
+          <div class="preview-label">Od</div>
+          <div class="preview-value" id="previewFrom"></div>
+        </div>
+        <div class="preview-row">
+          <div class="preview-label">Do</div>
+          <div class="preview-value" id="previewTo"></div>
+        </div>
+        <div class="preview-row">
+          <div class="preview-label">Temat</div>
+          <div class="preview-value" id="previewSubject"></div>
+        </div>
+      </div>
+
+      <!-- Full body viewer -->
+      <div id="bodyViewer" class="body-viewer">
+        <div class="body-viewer-head">
+          📄 Treść wiadomości &nbsp;<span id="bodyViewerType" class="pill"></span>
+        </div>
+        <div id="bodyViewerContent"></div>
+      </div>
+
+      <!-- Attachments -->
+      <div id="attSection" class="att-section">
+        <div class="att-head">📎 Załączniki</div>
+        <table class="att-table" id="attTable"><tbody id="attBody"></tbody></table>
+      </div>
+
+      <!-- Action buttons (small) -->
+      <div id="actionBtns" class="btn-row" style="display:none">
+        <button class="btn-action btn-copy" id="copyBodyBtn">📋 Skopiuj cytowaną treść</button>
+        <button class="btn-action btn-secondary" id="openGmailBtn">✉️ Otwórz szkic odpowiedzi w Gmail</button>
+      </div>
+
+    </div><!-- /body -->
+
+    <div class="footer">
+      <strong>ℹ️ Jak używać:</strong><br>
+      1. Wybierz lub przeciągnij plik .eml — treść i załączniki pojawią się automatycznie<br>
+      2. Kliknij „Skopiuj cytowaną treść" — skopiuje oryginalną wiadomość z formatowaniem HTML (jeśli dostępne)<br>
+      3. Kliknij „Otwórz szkic odpowiedzi w Gmail" — otworzy nową wiadomość z uzupełnionym adresatem i tematem (Re: …)<br>
+      4. Wklej skopiowaną treść (Ctrl+V) w pole wiadomości w Gmail<br>
+      5. Napisz swoją odpowiedź i wyślij<br><br>
+      <strong>💡 Wskazówka:</strong> Wiadomości multipart zachowują formatowanie (pogrubienia, kursywy, linki) przy wklejaniu w Gmail!
+    </div>
+
+  </div>
+</div>
+
+<script>
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const preview   = document.getElementById('preview');
+const status    = document.getElementById('status');
+let currentGmailUrl  = '';
+let currentParsedData = null;
+let currentAttachments = [];
+
+['dragenter','dragover','dragleave','drop'].forEach(ev => {
+    dropZone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); });
+    document.body.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); });
+});
+['dragenter','dragover'].forEach(ev => dropZone.addEventListener(ev, () => dropZone.classList.add('dragover')));
+['dragleave','drop'].forEach(ev => dropZone.addEventListener(ev, () => dropZone.classList.remove('dragover')));
+
+dropZone.addEventListener('drop', e => handleFiles(e.dataTransfer.files));
+fileInput.addEventListener('change', e => handleFiles(e.target.files));
+
+function handleFiles(files) {
+    if (!files.length) return;
+    const file = files[0];
+    if (!file.name.endsWith('.eml')) { showStatus('Wybierz plik .eml', 'error'); return; }
+    processEmlFile(file);
+}
+
+function processEmlFile(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const parsed = parseEml(e.target.result);
+            if (!parsed.email) { showStatus('Nie znaleziono adresu email w pliku', 'error'); return; }
+            currentParsedData = parsed;
+
+            document.getElementById('previewFrom').textContent    = parsed.from;
+            document.getElementById('previewTo').textContent      = parsed.email;
+            document.getElementById('previewSubject').textContent = parsed.subject;
+            document.title = parsed.subject || 'Podgląd EML';
+
+            preview.style.display = 'block';
+            document.getElementById('dropZone').style.display = 'none';
+            document.getElementById('fileInput').style.display = 'none';
+
+            showBodyViewer(parsed.htmlBody, parsed.body);
+            showAttachments(parsed.attachments || []);
+
+            const copyBtn = document.getElementById('copyBodyBtn');
+            if (parsed.replyBodyHtml) {
+                copyBtn.textContent = '📋 Skopiuj cytowanie (z formatowaniem)';
+                copyBtn.className = 'btn-action btn-copy';
+            } else {
+                copyBtn.textContent = '📋 Skopiuj cytowanie (tekst)';
+                copyBtn.className = 'btn-action btn-muted';
+            }
+            document.getElementById('actionBtns').style.display = 'flex';
+
+            currentGmailUrl = buildGmailUrl(parsed);
+            showStatus('✔ Plik wczytany! Charset: ' + (parsed.charset || 'unknown'), 'success');
+        } catch(err) {
+            showStatus('Błąd parsowania pliku: ' + err.message, 'error');
+            console.error(err);
+        }
+    };
+    reader.onerror = () => showStatus('Błąd odczytu pliku', 'error');
+    reader.readAsText(file);
+}
+
+/* ── Body viewer ── */
+function showBodyViewer(htmlBody, plainBody) {
+    const viewer  = document.getElementById('bodyViewer');
+    const content = document.getElementById('bodyViewerContent');
+    const badge   = document.getElementById('bodyViewerType');
+    content.innerHTML = '';
+    viewer.style.display = 'block';
+
+    if (htmlBody) {
+        badge.textContent = 'HTML';
+        badge.style.color = 'var(--ok)';
+        // Shadow DOM: izolacja CSS maila, bez problemów blob:/srcdoc na file://
+        const host   = document.createElement('div');
+        host.className = 'email-shadow-host';
+        const shadow = host.attachShadow({ mode: 'open' });
+        // Sanitize: usuń skrypty i event handlery z HTML maila
+        const safe = sanitizeEmailHtml(htmlBody);
+        shadow.innerHTML = safe;
+        // Otwieraj linki w nowej karcie
+        shadow.querySelectorAll('a[href]').forEach(a => {
+            a.setAttribute('target', '_blank');
+            a.setAttribute('rel', 'noopener noreferrer');
+        });
+        content.appendChild(host);
+    } else {
+        badge.textContent = 'Tekst';
+        badge.style.color = 'var(--muted)';
+        const pre = document.createElement('pre');
+        pre.textContent = plainBody || '';
+        content.appendChild(pre);
+    }
+}
+
+/* ── Attachments ── */
+function getFileIcon(mime) {
+    if (mime.startsWith('image/'))         return '🖼️';
+    if (mime === 'application/pdf')        return '📄';
+    if (mime.includes('word') || mime.includes('.document')) return '📝';
+    if (mime.includes('excel') || mime.includes('.sheet'))   return '📊';
+    if (mime.includes('presentation'))    return '📑';
+    if (mime.startsWith('text/'))         return '📃';
+    if (mime.includes('zip') || mime.includes('compressed')) return '🗜️';
+    if (mime.startsWith('audio/'))        return '🎵';
+    if (mime.startsWith('video/'))        return '🎬';
+    if (mime.includes('xml'))             return '📋';
+    return '📎';
+}
+
+function formatSize(att) {
+    let bytes;
+    if (att.encoding === 'base64') {
+        bytes = Math.round(att.data.length * 3 / 4);
+    } else {
+        bytes = att.data.length;
+    }
+    if (bytes > 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
+    if (bytes > 1024)    return Math.round(bytes / 1024) + ' KB';
+    return bytes + ' B';
+}
+
+function showAttachments(atts) {
+    currentAttachments = atts;
+    const section = document.getElementById('attSection');
+    const tbody   = document.getElementById('attBody');
+    tbody.innerHTML = '';
+    if (!atts || !atts.length) { section.style.display = 'none'; return; }
+    section.style.display = 'block';
+
+    atts.forEach((att, i) => {
+        const ext  = att.name.split('.').pop().toUpperCase();
+        const size = formatSize(att);
+        const icon = getFileIcon(att.mimeType);
+        const tr   = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="att-icon">${icon}</td>
+          <td><div class="att-name">${escHtml(att.name)}</div>
+              <div class="att-meta">${escHtml(att.mimeType)}</div></td>
+          <td><span class="pill">${escHtml(ext)}</span></td>
+          <td class="att-meta">${size}</td>
+          <td><button class="btn-dl" onclick="downloadAttachment(${i})">⬇ Pobierz</button></td>`;
+        tbody.appendChild(tr);
+    });
+}
+
+function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function downloadAttachment(idx) {
+    const att = currentAttachments[idx];
+    let bytes;
+    if (att.encoding === 'base64') {
+        const bin = atob(att.data);
+        bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    } else if (att.encoding === 'quoted-printable') {
+        const text = decodeQuotedPrintable(att.data, 'utf-8');
+        bytes = new TextEncoder().encode(text);
+    } else {
+        bytes = new TextEncoder().encode(att.data);
+    }
+    const blob = new Blob([bytes], { type: att.mimeType || 'application/octet-stream' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = att.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+/* ── Email HTML sanitizer ── */
+function sanitizeEmailHtml(html) {
+    return html
+        .replace(/<script[^<]*(?:(?!<\/script>)<[^<]*)*<\/script\s*>/gi, '')
+        .replace(/(<[^>]+?)\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '$1')
+        .replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '');
+}
+
+function replaceCidImages(html, cidMap) {
+    return html.replace(/src=["']cid:([^"']+)["']/gi, (match, cid) => {
+        const res = cidMap[cid] || cidMap[cid.split('@')[0]];
+        if (res) return `src="data:${res.mimeType};base64,${res.data}"`;
+        return 'src=""';  // ukryj nieznane cid:
+    });
+}
+
+/* ── EML parser ── */
+function parseEml(text) {
+    const headers = {};
+    const lines   = text.split(/\r?\n/);
+    let bodyStart = 0, currentHeader = null;
+
+    for (let i = 0; i < lines.length; i++) {
+        if (lines[i].trim() === '') { bodyStart = i + 1; break; }
+        if (lines[i].match(/^[\s\t]/) && currentHeader) {
+            const prev = headers[currentHeader], next = lines[i].trim();
+            if (prev.match(/=\?[^?]+\?[BQ]\?[^?]+\?=$/i) && next.match(/^=\?[^?]+\?[BQ]\?[^?]+\?=/i))
+                headers[currentHeader] += next;
+            else
+                headers[currentHeader] += ' ' + next;
+            continue;
+        }
+        const m = lines[i].match(/^([^:]+):\s*(.*)$/);
+        if (m) {
+            const key = m[1].toLowerCase().trim();
+            currentHeader = key;
+            headers[key] = headers[key] ? headers[key] + ' ' + m[2] : m[2];
+        }
+    }
+
+    let body = lines.slice(bodyStart).join('\n');
+    let htmlBody = null;
+    let attachments = [];
+
+    const contentType   = headers['content-type'] || '';
+    let   contentTypeCharset = extractCharset(contentType);
+    const boundaryMatch = contentType.match(/boundary=["']?([^;"'\s]+)["']?/i);
+
+    if (boundaryMatch) {
+        let boundary = boundaryMatch[1].replace(/^["']|["']$/g, '');
+        const result = extractPlainTextFromMultipart(body, boundary);
+        body        = result.plain;
+        htmlBody    = result.html;
+        attachments = result.attachments || [];
+        if (result.charset) contentTypeCharset = result.charset;
+        if (htmlBody && result.cidMap && Object.keys(result.cidMap).length > 0) {
+            htmlBody = replaceCidImages(htmlBody, result.cidMap);
+        }
+    } else {
+        const encoding = (headers['content-transfer-encoding'] || '').toLowerCase().trim();
+        const charset  = extractCharset(contentType);
+        body = decodeBody(body, encoding, charset);
+    }
+
+    const from       = headers['from'] || '';
+    const decodedFrom = decodeHeader(from);
+    const emailMatch  = from.match(/[\w.+-]+@[\w.-]+\.\w+/);
+    const email       = emailMatch ? emailMatch[0] : '';
+
+    let subject = decodeHeader(headers['subject'] || '');
+    const replySubject = subject.startsWith('Re: ') ? subject : 'Re: ' + subject;
+
+    const dateFormatted = formatPolishDate(headers['date']);
+    const quoteHeader   = dateFormatted
+        ? `${dateFormatted} ${decodedFrom} napisał(a):`
+        : `${decodedFrom} napisał(a):`;
+
+    let replyBody, replyBodyHtml;
+    if (htmlBody) {
+        const quotedBody   = body.split('\n').map(l => '> ' + l).join('\n');
+        const qhHtml       = `<div class="gmail_quote">${quoteHeader}<br></div>`;
+        replyBodyHtml = `<br><br><br>${qhHtml}<blockquote style="margin:0 0 0 0.8ex;border-left:1px solid #ccc;padding-left:1ex">${htmlBody}</blockquote>`;
+        replyBody     = `\n\n\n${quoteHeader}\n\n${quotedBody}`;
+    } else {
+        const quotedBody = body.split('\n').map(l => '> ' + l).join('\n');
+        replyBody     = `\n\n\n${quoteHeader}\n\n${quotedBody}`;
+        replyBodyHtml = null;
+    }
+
+    return {
+        email, from: decodedFrom, date: headers['date'],
+        subject, replySubject, body, htmlBody,
+        replyBody, replyBodyHtml,
+        messageId: headers['message-id'], references: headers['references'],
+        charset: contentTypeCharset,
+        attachments
+    };
+}
+
+function extractPlainTextFromMultipart(body, boundary) {
+    const escaped = boundary.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const parts   = body.split(new RegExp('--' + escaped));
+
+    let plainTextBody = null, htmlBody = null;
+    let attachments   = [];
+    let plainCharset  = null;
+    let cidMap        = {};
+
+    for (let part of parts) {
+        const trimmed = part.trim();
+        if (!trimmed || trimmed === '--') continue;
+
+        const partLines   = trimmed.split(/\r?\n/);
+        const partHeaders = {};
+        let partBodyStart = 0, curHdr = null;
+
+        for (let i = 0; i < partLines.length; i++) {
+            if (partLines[i].trim() === '') { partBodyStart = i + 1; break; }
+            if (partLines[i].match(/^[\s\t]/) && curHdr) {
+                partHeaders[curHdr] += ' ' + partLines[i].trim(); continue;
+            }
+            const m = partLines[i].match(/^([^:]+):\s*(.*)$/);
+            if (m) {
+                const key = m[1].toLowerCase().trim();
+                curHdr = key;
+                const val = m[2].trim();
+                partHeaders[key] = partHeaders[key] ? partHeaders[key] + ' ' + val : val;
+            }
+        }
+
+        const partCT   = partHeaders['content-type']              || '';
+        const partDisp = partHeaders['content-disposition']        || '';
+        const partBody = partLines.slice(partBodyStart).join('\n');
+        const encoding = (partHeaders['content-transfer-encoding'] || '').toLowerCase().trim();
+        const partCharset = extractCharset(partCT);
+        const nestedBM    = partCT.match(/boundary=["']?([^;"'\s]+)["']?/i);
+
+        if (nestedBM) {
+            let nb = nestedBM[1].replace(/^["']|["']$/g, '');
+            const nr = extractPlainTextFromMultipart(partBody, nb);
+            if (nr.plain   && !plainTextBody) plainTextBody = nr.plain;
+            if (nr.html    && !htmlBody)      htmlBody      = nr.html;
+            if (nr.charset     && !plainCharset) plainCharset = nr.charset;
+            if (nr.attachments)              attachments  = attachments.concat(nr.attachments);
+            if (nr.cidMap)                   Object.assign(cidMap, nr.cidMap);
+            continue;
+        }
+
+        if (partCT.includes('text/plain')) {
+            plainTextBody = decodeBody(partBody, encoding, partCharset);
+            plainCharset  = partCharset;
+            continue;
+        }
+        if (partCT.includes('text/html')) {
+            htmlBody = decodeBody(partBody, encoding, partCharset);
+            // Treść jest już zdekodowana do Unicode — nadpisz deklaracje charset
+            // żeby przeglądarka nie próbowała ponownie interpretować jako oryginalny charset
+            htmlBody = htmlBody
+                .replace(/<meta\s+http-equiv\s*=\s*["']?content-type["']?[^>]*>/gi, '<meta charset="UTF-8">')
+                .replace(/<meta\s+charset\s*=[^>]*>/gi, '<meta charset="UTF-8">');
+            continue;
+        }
+
+        /* ── Attachment / inline ── */
+        let filename = '';
+
+        // RFC 5987: filename*=charset''encoded
+        let fm = partDisp.match(/filename\*=([^;\s\r\n]+)/i) || partCT.match(/name\*=([^;\s\r\n]+)/i);
+        if (fm) {
+            const rf = fm[1].replace(/^["']|["']$/g, '');
+            const rm = rf.match(/^([^']*)'[^']*'(.*)$/);
+            if (rm) { try { filename = decodeURIComponent(rm[2]); } catch(e) { filename = rm[2]; } }
+            else filename = rf;
+        }
+
+        // Classic filename="..."
+        if (!filename) {
+            fm = partDisp.match(/filename=["']?([^;"'\r\n]+)/i) || partCT.match(/\bname=["']?([^;"'\r\n]+)/i);
+            if (fm) filename = decodeHeader(fm[1].trim().replace(/^["']|["']$/g, ''));
+        }
+
+        const mime    = partCT.split(';')[0].trim() || 'application/octet-stream';
+        const ext     = mime.split('/')[1] || 'bin';
+        const rawData = encoding === 'base64' ? partBody.replace(/\s/g, '') : partBody;
+
+        // Inline z Content-ID → mapa CID do podmiany w HTML
+        const contentId = (partHeaders['content-id'] || '').replace(/^<|>$/g, '').trim();
+        if (contentId && encoding === 'base64') {
+            cidMap[contentId] = { mimeType: mime, data: rawData };
+            // Dodaj też wariant bez domeny (@...) dla uproszczonych referencji
+            const shortId = contentId.split('@')[0];
+            if (shortId !== contentId) cidMap[shortId] = { mimeType: mime, data: rawData };
+        }
+
+        if (filename) {
+            attachments.push({
+                name: filename, mimeType: mime, data: rawData, encoding: encoding || 'identity'
+            });
+        }
+    }
+
+    return {
+        plain:   plainTextBody || (htmlBody ? stripHtml(htmlBody) : body),
+        html:    htmlBody,
+        attachments,
+        charset: plainCharset,
+        cidMap
+    };
+}
+
+function stripHtml(html) {
+    return html
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<[^>]+>/g, '')
+        .replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"')
+        .trim();
+}
+
+function decodeBody(body, encoding, charset = 'utf-8') {
+    if (encoding === 'quoted-printable') return decodeQuotedPrintable(body, charset);
+    if (encoding === 'base64') {
+        try {
+            const bin   = atob(body.replace(/\s/g, ''));
+            const bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+            return new TextDecoder(charset).decode(bytes);
+        } catch(e) { return body; }
+    }
+    return body.trim();
+}
+
+function extractCharset(ct) {
+    const m = ct.match(/charset=["']?([^;"'\s]+)/i);
+    return m ? m[1].toLowerCase() : 'utf-8';
+}
+
+function formatPolishDate(ds) {
+    if (!ds) return '';
+    try {
+        const d = new Date(ds);
+        if (isNaN(d.getTime())) return '';
+        const months = ['stycznia','lutego','marca','kwietnia','maja','czerwca',
+                        'lipca','sierpnia','września','października','listopada','grudnia'];
+        return `Dnia ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()} o godz. ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    } catch(e) { return ''; }
+}
+
+function decodeHeader(header) {
+    header = header.replace(/(\?=)\s+(=\?)/g, '$1$2');
+    return header.replace(/=\?([^?]+)\?([BQ])\?([^?]+)\?=/gi, (match, charset, enc, text) => {
+        try {
+            if (enc.toUpperCase() === 'B') {
+                const bin = atob(text), bytes = new Uint8Array(bin.length);
+                for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                return new TextDecoder(charset.toLowerCase()).decode(bytes);
+            } else {
+                const qpBytes = [];
+                let i = 0;
+                const ct = text.replace(/_/g, ' ');
+                while (i < ct.length) {
+                    if (ct[i] === '=' && i + 2 < ct.length) {
+                        const hex = ct.substr(i+1, 2);
+                        if (/^[0-9A-F]{2}$/i.test(hex)) { qpBytes.push(parseInt(hex,16)); i+=3; }
+                        else { qpBytes.push(ct.charCodeAt(i)); i++; }
+                    } else { qpBytes.push(ct.charCodeAt(i)); i++; }
+                }
+                return new TextDecoder(charset.toLowerCase()).decode(new Uint8Array(qpBytes));
+            }
+        } catch(e) { return match; }
+    });
+}
+
+function decodeQuotedPrintable(text, charset = 'utf-8') {
+    try {
+        const bytes = [];
+        let i = 0;
+        while (i < text.length) {
+            if (text[i]==='=' && text[i+1]==='\r' && text[i+2]==='\n') { i+=3; continue; }
+            if (text[i]==='=' && text[i+1]==='\n')                      { i+=2; continue; }
+            if (text[i]==='=' && i+2 < text.length) {
+                const hex = text.substr(i+1,2);
+                if (/^[0-9A-F]{2}$/i.test(hex)) { bytes.push(parseInt(hex,16)); i+=3; }
+                else { bytes.push(text.charCodeAt(i)); i++; }
+            } else { bytes.push(text.charCodeAt(i)); i++; }
+        }
+        return new TextDecoder(charset).decode(new Uint8Array(bytes));
+    } catch(e) { return text; }
+}
+
+function buildGmailUrl(parsed) {
+    return 'https://mail.google.com/mail/?' + new URLSearchParams({
+        view:'cm', fs:'1', to: parsed.email, su: parsed.replySubject
+    }).toString();
+}
+
+function showStatus(message, type) {
+    status.textContent  = message;
+    status.className    = 'status ' + type;
+    status.style.display = 'block';
+}
+
+document.getElementById('openGmailBtn').addEventListener('click', () => {
+    if (currentGmailUrl) { window.open(currentGmailUrl, '_blank'); showStatus('Gmail otwarty w nowej karcie', 'success'); }
+});
+
+document.getElementById('copyBodyBtn').addEventListener('click', async () => {
+    if (!currentParsedData) { showStatus('Najpierw wczytaj plik .eml', 'error'); return; }
+    try {
+        if (currentParsedData.replyBodyHtml) {
+            await navigator.clipboard.write([new ClipboardItem({
+                'text/html':  new Blob([currentParsedData.replyBodyHtml], {type:'text/html'}),
+                'text/plain': new Blob([currentParsedData.replyBody],    {type:'text/plain'})
+            })]);
+            showStatus('Sformatowana treść skopiowana! Wklej w Gmail (Ctrl+V)', 'success');
+        } else {
+            await navigator.clipboard.writeText(currentParsedData.replyBody);
+            showStatus('Cytowana treść skopiowana! Wklej w Gmail (Ctrl+V)', 'success');
+        }
+    } catch(err) {
+        try { await navigator.clipboard.writeText(currentParsedData.replyBody); showStatus('Treść skopiowana (tylko tekst). Wklej w Gmail (Ctrl+V)', 'success'); }
+        catch(e2) { showStatus('Błąd kopiowania. Spróbuj ponownie.', 'error'); }
+    }
+});
+
+/* ── Auto-load: embedded (plik lokalny) lub URL hash ── */
+function loadFromBase64(b64, filename) {
+    showStatus('⏳ Ładowanie pliku…', 'success');
+    try {
+        const binary = atob(b64);
+        const bytes  = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const blob = new Blob([bytes], { type: 'message/rfc822' });
+        const file = new File([blob], filename, { type: 'message/rfc822' });
+        processEmlFile(file);
+    } catch(e) {
+        showStatus('Błąd ładowania EML: ' + e.message, 'error');
+    }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    // Priorytet 1: dane wbudowane przez skrypt (plik lokalny)
+    if (typeof window.EMBEDDED_EML !== 'undefined' && window.EMBEDDED_EML) {
+        loadFromBase64(window.EMBEDDED_EML, window.EMBEDDED_EML_NAME || 'email.eml');
+        return;
+    }
+    // Priorytet 2: URL hash (tryb serwerowy)
+    const hash = window.location.hash;
+    if (hash.startsWith('#eml=')) {
+        try {
+            loadFromBase64(decodeURIComponent(hash.slice(5)), 'email.eml');
+            history.replaceState(null, '', window.location.pathname + window.location.search);
+        } catch(e) {
+            showStatus('Błąd ładowania EML z URL: ' + e.message, 'error');
+        }
+    }
+});
+</script>
+</body>
+</html>
