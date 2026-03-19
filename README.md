@@ -21,6 +21,23 @@ Kolejność działania po dwukliku:
    - treść wiadomości (HTML lub tekst)
    - załączniki z możliwością pobrania
 
+---
+
+## Odpowiadanie na wiadomość przez Gmail
+
+Wizualizator umożliwia wygodne odpowiadanie na wczytaną wiadomość przez Gmail:
+
+1. **Skopiuj cytowaną treść** — kliknij przycisk `📋 Skopiuj cytowanie`, który kopiuje oryginalną wiadomość do schowka z zachowanym formatowaniem HTML (pogrubienia, kursywy, linki, tabele)
+2. **Otwórz szkic odpowiedzi** — kliknij przycisk `✉️ Otwórz szkic odpowiedzi w Gmail`, który otwiera Gmail w nowej karcie z automatycznie uzupełnionym:
+   - adresatem (`Do:`) — adres nadawcy oryginalnej wiadomości
+   - tematem (`Re: ...`) — temat oryginalnej wiadomości z prefiksem `Re:`
+3. **Wklej cytowanie** — w oknie Gmaila wklej treść ze schowka skrótem `Ctrl+V` (Windows/Linux) lub `Cmd+V` (macOS)
+4. Napisz odpowiedź i wyślij
+
+> **Wskazówka:** wiadomości w formacie HTML zachowują pełne formatowanie przy wklejaniu w Gmail. Wiadomości tekstowe są wklejane jako zwykły tekst z cytowaniem oznaczonym `>`.
+
+---
+
 **Na Linuksie** — instalator rejestruje plik `.desktop` jako domyślną aplikację
 dla typu MIME `message/rfc822`, który obejmuje pliki `.eml`.
 
