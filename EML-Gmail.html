@@ -307,6 +307,10 @@
           <div class="preview-label">CC</div>
           <div class="preview-value" id="previewCc"></div>
         </div>
+        <div class="preview-row" id="rowBcc" style="display:none">
+          <div class="preview-label">BCC</div>
+          <div class="preview-value" id="previewBcc"></div>
+        </div>
         <div class="preview-row">
           <div class="preview-label">Temat</div>
           <div class="preview-value" id="previewSubject"></div>
@@ -393,6 +397,10 @@ function processEmlFile(file) {
             if (parsed.cc) {
                 document.getElementById('previewCc').textContent = parsed.cc;
                 document.getElementById('rowCc').style.display = '';
+            }
+            if (parsed.bcc) {
+                document.getElementById('previewBcc').textContent = parsed.bcc;
+                document.getElementById('rowBcc').style.display = '';
             }
             document.getElementById('previewSubject').textContent = parsed.subject;
             document.title = parsed.subject || 'Podgląd EML';
@@ -612,6 +620,9 @@ function parseEml(text) {
     const ccRaw    = headers['cc'] || '';
     const decodedCc = decodeHeader(ccRaw);
 
+    const bccRaw   = headers['bcc'] || '';
+    const decodedBcc = decodeHeader(bccRaw);
+
     let subject = decodeHeader(headers['subject'] || '');
     const replySubject = subject.startsWith('Re: ') ? subject : 'Re: ' + subject;
 
@@ -633,7 +644,7 @@ function parseEml(text) {
     }
 
     return {
-        email, from: decodedFrom, to: decodedTo, cc: decodedCc, date: headers['date'],
+        email, from: decodedFrom, to: decodedTo, cc: decodedCc, bcc: decodedBcc, date: headers['date'],
         subject, replySubject, body, htmlBody,
         replyBody, replyBodyHtml,
         messageId: headers['message-id'], references: headers['references'],
@@ -924,6 +935,10 @@ function processMsgFile(file) {
                 document.getElementById('previewCc').textContent  = parsed.cc;
                 document.getElementById('rowCc').style.display    = '';
             }
+            if (parsed.bcc) {
+                document.getElementById('previewBcc').textContent = parsed.bcc;
+                document.getElementById('rowBcc').style.display   = '';
+            }
             document.getElementById('previewSubject').textContent = parsed.subject;
             document.title = parsed.subject || 'Podgląd MSG';
 
@@ -1123,27 +1138,36 @@ function parseMsgArrayBuffer(ab) {
             if (entry.type !== 1 || !key.includes('__RECIP_VERSION1.0_#')) continue;
             const pfx = key + '/';
             const name  = readStrAt(pfx, 0x3001);  // PR_DISPLAY_NAME
-            const email = readStrAt(pfx, 0x39FE)   // PR_SMTP_ADDRESS
-                       || readStrAt(pfx, 0x0076)   // PR_TRANSMITTABLE_DISPLAY_NAME
-                       || readStrAt(pfx, 0x3003);  // PR_EMAIL_ADDRESS
+            const rawEmail = readStrAt(pfx, 0x39FE)   // PR_SMTP_ADDRESS
+                          || readStrAt(pfx, 0x3003);  // PR_EMAIL_ADDRESS
+            // Odfiltruj Exchange DN (/o=...) — nie są to adresy SMTP
+            const email = (rawEmail && !rawEmail.startsWith('/o=')) ? rawEmail : '';
+            // PR_RECIPIENT_TYPE (0x0C15) to PT_LONG — fixed-size, w __PROPERTIES_VERSION1.0
+            // Nagłówek properties stream sub-obiektu = 8 bajtów (nie 32 jak top-level)
             const recipType = (() => {
-                const e = map[propKey(pfx, 0x0C15, 0x0003)]; // PR_RECIPIENT_TYPE PT_LONG
-                if (!e) return 1;
-                const d = readStream(e);
-                return new DataView(d.buffer, d.byteOffset).getInt32(0, true);
+                const propsEntry = map[(pfx + '__PROPERTIES_VERSION1.0').toUpperCase()];
+                if (!propsEntry) return 1;
+                const pd  = readStream(propsEntry);
+                const pdv = new DataView(pd.buffer, pd.byteOffset);
+                for (let i = 8; i + 16 <= pd.length; i += 16) {
+                    if (pdv.getUint16(i, true) === 0x0003 && pdv.getUint16(i+2, true) === 0x0C15)
+                        return pdv.getInt32(i + 8, true);
+                }
+                return 1;
             })();
             const formatted = (name && email && name !== email) ? `${name} <${email}>` : (email || name);
             if      (recipType === 1) to.push(formatted);
             else if (recipType === 2) cc.push(formatted);
             else if (recipType === 3) bcc.push(formatted);
         }
-        return { to: to.join('; '), cc: cc.join('; ') };
+        return { to: to.join('; '), cc: cc.join('; '), bcc: bcc.join('; ') };
     }
     const recips = collectRecips();
 
     /* Fallback: PR_DISPLAY_TO / PR_DISPLAY_CC gdy brak recipientów */
-    const displayTo = recips.to || readStrAt(ROOT, 0x0E04);
-    const displayCc = recips.cc || readStrAt(ROOT, 0x0E03);
+    const displayTo  = recips.to  || readStrAt(ROOT, 0x0E04);
+    const displayCc  = recips.cc  || readStrAt(ROOT, 0x0E03);
+    const displayBcc = recips.bcc || readStrAt(ROOT, 0x0E02);
 
     /* Treść */
     const bodyPlain = readStrAt(ROOT, 0x1000);
@@ -1200,7 +1224,7 @@ function parseMsgArrayBuffer(ab) {
         : null;
 
     return {
-        email: senderEmail, from, to: displayTo, cc: displayCc, date: dateStr,
+        email: senderEmail, from, to: displayTo, cc: displayCc, bcc: displayBcc, date: dateStr,
         subject, replySubject, body, htmlBody: bodyHTML,
         replyBody, replyBodyHtml, messageId: '', references: '', charset: 'utf-8', attachments
     };
