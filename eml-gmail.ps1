@@ -1,18 +1,19 @@
 #Requires -Version 5.1
-# eml-gmail.ps1 — otwiera plik .eml jako lokalny podgląd HTML
+# eml-gmail.ps1 — otwiera plik .eml / .msg jako lokalny podgląd HTML
 #
 # Instalacja:
 #   powershell -ExecutionPolicy Bypass -File setup-windows.ps1
 #
 # Użycie:
 #   powershell -File eml-gmail.ps1 C:\Pobrane\wiadomosc.eml
+#   powershell -File eml-gmail.ps1 C:\Pobrane\wiadomosc.msg
 
 param(
     [Parameter(Mandatory=$true, Position=0)]
     [string]$EmlFile
 )
 
-$TEMPLATE    = "$env:LOCALAPPDATA\eml-gmail\index.html"
+$TEMPLATE    = Join-Path $PSScriptRoot "index.html"
 $MAX_SIZE_MB = 30
 
 # ── Sprawdzenie pliku ──

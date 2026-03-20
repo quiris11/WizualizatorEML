@@ -42,23 +42,23 @@ if ($userPath -notlike "*$INSTALL_DIR*") {
 }
 
 # -- Rejestracja skojarzenia .eml (HKCU - bez admina) --
-Write-Host "Rejestracja skojarzenia .eml..."
+Write-Host "Rejestracja skojarzen .eml i .msg..."
 $openCmd = "`"$psExe`" -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$SCRIPT_DST`" `"%1`""
 $regBase = "HKCU:\Software\Classes"
 
-New-Item -Force -Path "$regBase\.eml"                           | Out-Null
-Set-ItemProperty -Path "$regBase\.eml" -Name "(Default)"         -Value "EML.Viewer"
+foreach ($ext in @(".eml", ".msg")) {
+    New-Item -Force -Path "$regBase\$ext"                        | Out-Null
+    Set-ItemProperty -Path "$regBase\$ext" -Name "(Default)"     -Value "EML.Viewer"
+    New-Item -Force -Path "$regBase\$ext\OpenWithProgids"        | Out-Null
+    Set-ItemProperty -Path "$regBase\$ext\OpenWithProgids" -Name "EML.Viewer" -Value "" -Type String
+    New-Item -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\$ext\OpenWithProgids" | Out-Null
+    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\$ext\OpenWithProgids" -Name "EML.Viewer" -Value "" -Type String
+}
 New-Item -Force -Path "$regBase\EML.Viewer"                     | Out-Null
 Set-ItemProperty -Path "$regBase\EML.Viewer" -Name "(Default)"   -Value "Wizualizator EML"
 New-Item -Force -Path "$regBase\EML.Viewer\shell\open\command" | Out-Null
 Set-ItemProperty -Path "$regBase\EML.Viewer\shell\open\command" -Name "(Default)" -Value $openCmd
-
-# Rejestracja w OpenWithProgids - aplikacja jest widoczna na liscie "Otworz za pomoca"
-New-Item -Force -Path "$regBase\.eml\OpenWithProgids" | Out-Null
-Set-ItemProperty -Path "$regBase\.eml\OpenWithProgids" -Name "EML.Viewer" -Value "" -Type String
-New-Item -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.eml\OpenWithProgids" | Out-Null
-Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.eml\OpenWithProgids" -Name "EML.Viewer" -Value "" -Type String
-Write-Host "  OK Skojarzenie .eml -> Wizualizator EML zarejestrowane"
+Write-Host "  OK Skojarzenia .eml i .msg -> Wizualizator EML zarejestrowane"
 
 # -- Powiadomienie Explorera --
 Add-Type -MemberDefinition '[DllImport("shell32.dll")] public static extern void SHChangeNotify(int e, uint f, IntPtr a, IntPtr b);' -Name WinAPI -Namespace Shell32 -ErrorAction SilentlyContinue
@@ -83,7 +83,7 @@ Write-Host "    Zaznacz: Wizualizator EML"
 Write-Host "    Zaznacz: Zawsze uzywaj tej aplikacji -> OK"
 Write-Host ""
 Write-Host "  Sposob 2 (przez Ustawienia):"
-Write-Host "    Ustawienia -> Aplikacje -> Domyslne aplikacje -> wyszukaj: .eml"
+Write-Host "    Ustawienia -> Aplikacje -> Domyslne aplikacje -> wyszukaj: .eml lub .msg"
 Write-Host "    Wybierz: Wizualizator EML"
 Write-Host ""
 $answer = Read-Host "Otworzyc Ustawienia -> Domyslne aplikacje teraz? (t/n)"
