@@ -180,7 +180,7 @@
         /* Shadow host — izolacja CSS maila od strony */
         .email-shadow-host {
             display: block;
-            padding: 16px 20px;
+            padding: 0;
             overflow: visible;
         }
         #bodyViewerContent pre {
@@ -442,7 +442,7 @@ function showBodyViewer(htmlBody, plainBody) {
         const shadow = host.attachShadow({ mode: 'open' });
         // Sanitize: usuń skrypty i event handlery z HTML maila
         const safe = sanitizeEmailHtml(htmlBody);
-        shadow.innerHTML = safe;
+        shadow.innerHTML = '<div style="padding:16px 20px">' + safe + '</div>';
         // Otwieraj linki w nowej karcie
         shadow.querySelectorAll('a[href]').forEach(a => {
             a.setAttribute('target', '_blank');
