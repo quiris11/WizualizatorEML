@@ -78,6 +78,29 @@ DESKTOP
 chmod 644 "$DESKTOP_FILE"
 echo "  ✔ Plik .desktop utworzony"
 
+# ── Rejestracja MIME type dla .msg ──
+MIME_DIR="$HOME/.local/share/mime/packages"
+MIME_FILE="$MIME_DIR/eml-gmail-msg.xml"
+mkdir -p "$MIME_DIR"
+cat > "$MIME_FILE" << 'MIMEXML'
+<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/vnd.ms-outlook">
+    <comment>Wiadomość Microsoft Outlook</comment>
+    <glob pattern="*.msg"/>
+    <magic priority="60">
+      <match type="string" offset="0" value="\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1"/>
+    </magic>
+  </mime-type>
+</mime-info>
+MIMEXML
+if command -v update-mime-database &>/dev/null; then
+    update-mime-database "$HOME/.local/share/mime"
+    echo "  ✔ MIME type application/vnd.ms-outlook zarejestrowany"
+else
+    echo "  ⚠ update-mime-database niedostępny — pomiń rejestrację MIME"
+fi
+
 # ── Aktualizacja bazy .desktop ──
 if command -v update-desktop-database &>/dev/null; then
     update-desktop-database "$DESKTOP_DIR"
