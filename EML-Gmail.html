@@ -287,7 +287,7 @@
         <div class="drop-zone-subtext">lub</div>
         <button onclick="document.getElementById('fileInput').click()">Wybierz plik .eml</button>
       </div>
-      <input type="file" id="fileInput" accept=".eml" />
+      <input type="file" id="fileInput" accept=".eml,.msg" />
 
       <div id="status" class="status"></div>
 
@@ -296,6 +296,10 @@
         <div class="preview-row">
           <div class="preview-label">Od</div>
           <div class="preview-value" id="previewFrom"></div>
+        </div>
+        <div class="preview-row" id="rowDate" style="display:none">
+          <div class="preview-label">Data</div>
+          <div class="preview-value" id="previewDate"></div>
         </div>
         <div class="preview-row">
           <div class="preview-label">Do</div>
@@ -368,8 +372,9 @@ fileInput.addEventListener('change', e => handleFiles(e.target.files));
 function handleFiles(files) {
     if (!files.length) return;
     const file = files[0];
-    if (!file.name.endsWith('.eml')) { showStatus('Wybierz plik .eml', 'error'); return; }
-    processEmlFile(file);
+    if      (file.name.toLowerCase().endsWith('.msg')) processMsgFile(file);
+    else if (file.name.toLowerCase().endsWith('.eml')) processEmlFile(file);
+    else showStatus('Wybierz plik .eml lub .msg', 'error');
 }
 
 function processEmlFile(file) {
@@ -381,6 +386,11 @@ function processEmlFile(file) {
             currentParsedData = parsed;
 
             document.getElementById('previewFrom').textContent    = parsed.from;
+            const fmtDate = formatPolishDate(parsed.date);
+            if (fmtDate) {
+                document.getElementById('previewDate').textContent = fmtDate;
+                document.getElementById('rowDate').style.display = '';
+            }
             document.getElementById('previewTo').textContent      = parsed.to || '(brak informacji — prawdopodobnie BCC)';
             if (parsed.cc) {
                 document.getElementById('previewCc').textContent = parsed.cc;
@@ -893,6 +903,308 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+
+/* ════════════════════════════════════════════════════════════
+   MSG support  –  OLE2/CFB + MAPI  (pure JS, no deps)
+   ════════════════════════════════════════════════════════════ */
+
+function processMsgFile(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const parsed = parseMsgArrayBuffer(e.target.result);
+            currentParsedData = parsed;
+
+            document.getElementById('previewFrom').textContent    = parsed.from;
+            const fmtDateMsg = formatPolishDate(parsed.date);
+            if (fmtDateMsg) {
+                document.getElementById('previewDate').textContent = fmtDateMsg;
+                document.getElementById('rowDate').style.display = '';
+            }
+            document.getElementById('previewTo').textContent      = parsed.to || '(brak informacji — prawdopodobnie BCC)';
+            if (parsed.cc) {
+                document.getElementById('previewCc').textContent  = parsed.cc;
+                document.getElementById('rowCc').style.display    = '';
+            }
+            document.getElementById('previewSubject').textContent = parsed.subject;
+            document.title = parsed.subject || 'Podgląd MSG';
+
+            preview.style.display = 'block';
+            document.getElementById('dropZone').style.display  = 'none';
+            document.getElementById('fileInput').style.display = 'none';
+
+            showBodyViewer(parsed.htmlBody, parsed.body);
+            showAttachments(parsed.attachments || []);
+
+            const copyBtn = document.getElementById('copyBodyBtn');
+            if (parsed.replyBodyHtml) {
+                copyBtn.textContent = '📋 Skopiuj cytowanie (z formatowaniem)';
+                copyBtn.className   = 'btn-action btn-copy';
+            } else {
+                copyBtn.textContent = '📋 Skopiuj cytowanie (tekst)';
+                copyBtn.className   = 'btn-action btn-muted';
+            }
+            document.getElementById('actionBtns').style.display = 'flex';
+
+            currentGmailUrl = buildGmailUrl(parsed);
+            showStatus('✔ Plik MSG wczytany!', 'success');
+        } catch(err) {
+            showStatus('Błąd parsowania MSG: ' + err.message, 'error');
+            console.error(err);
+        }
+    };
+    reader.onerror = () => showStatus('Błąd odczytu pliku', 'error');
+    reader.readAsArrayBuffer(file);
+}
+
+/* ── MSG / OLE2-CFB + MAPI parser ── */
+function parseMsgArrayBuffer(ab) {
+    const dv = new DataView(ab);
+    const u8 = new Uint8Array(ab);
+
+    if (dv.getUint32(0, true) !== 0xE011CFD0 || dv.getUint32(4, true) !== 0xE11AB1A1)
+        throw new Error('Nieprawidłowy plik: brak sygnatury OLE2');
+
+    const secSz     = 1 << dv.getUint16(0x1E, true);
+    const miniSecSz = 1 << dv.getUint16(0x20, true);
+    const firstDir  = dv.getUint32(0x30, true);
+    const miniCut   = dv.getUint32(0x38, true);
+    const firstMini = dv.getUint32(0x3C, true);
+    const ints      = secSz >> 2;
+
+    /* FAT */
+    const fatSecs = [];
+    for (let i = 0; i < 109; i++) {
+        const s = dv.getUint32(0x4C + i * 4, true);
+        if (s >= 0xFFFFFFFA) break;
+        fatSecs.push(s);
+    }
+    let difSec = dv.getUint32(0x44, true);
+    while (difSec < 0xFFFFFFFA) {
+        const off = (difSec + 1) * secSz;
+        for (let i = 0; i < ints - 1; i++) {
+            const s = dv.getUint32(off + i * 4, true);
+            if (s >= 0xFFFFFFFA) break;
+            fatSecs.push(s);
+        }
+        difSec = dv.getUint32(off + (ints - 1) * 4, true);
+    }
+    const fat = [];
+    for (const sec of fatSecs) {
+        const off = (sec + 1) * secSz;
+        for (let i = 0; i < ints; i++) fat.push(dv.getUint32(off + i * 4, true));
+    }
+
+    function chain(start) {
+        const secs = [];
+        for (let s = start; s < 0xFFFFFFFA; s = fat[s]) {
+            secs.push(s);
+            if (secs.length > fat.length) break;
+        }
+        const buf = new Uint8Array(secs.length * secSz);
+        secs.forEach((s, i) => buf.set(u8.subarray((s+1)*secSz, (s+2)*secSz), i*secSz));
+        return buf;
+    }
+
+    /* MiniFAT */
+    const miniFat = [];
+    if (firstMini < 0xFFFFFFFA) {
+        const mf = chain(firstMini);
+        const mv = new DataView(mf.buffer);
+        for (let i = 0; i < mf.length >> 2; i++) miniFat.push(mv.getUint32(i*4, true));
+    }
+
+    /* Directory */
+    const dirData = chain(firstDir);
+    const dv2 = new DataView(dirData.buffer);
+    const entries = [];
+    for (let i = 0; i * 128 < dirData.length; i++) {
+        const b = i * 128;
+        const nlen = dv2.getUint16(b + 64, true);
+        let name = '';
+        for (let j = 0; j < nlen - 2 && j < 62; j += 2)
+            name += String.fromCharCode(dv2.getUint16(b + j, true));
+        entries.push({
+            name,
+            type  : dv2.getUint8(b + 66),
+            start : dv2.getUint32(b + 116, true),
+            size  : dv2.getUint32(b + 120, true),
+            child : dv2.getUint32(b + 76,  true),
+            left  : dv2.getUint32(b + 68,  true),
+            right : dv2.getUint32(b + 72,  true),
+        });
+    }
+
+    const root     = entries[0];
+    const rootData = (root && root.start < 0xFFFFFFFA) ? chain(root.start) : null;
+
+    /* Flat name map */
+    const map = {};
+    function walk(idx, pfx) {
+        if (idx >= 0xFFFFFFFA || idx >= entries.length) return;
+        const e = entries[idx];
+        map[(pfx + e.name).toUpperCase()] = e;
+        walk(e.left,  pfx);
+        walk(e.right, pfx);
+        if (e.type === 1) walk(e.child, pfx + e.name + '/');
+    }
+    if (entries.length) walk(root.child, '/');
+
+    function readStream(e) {
+        if (e.size < miniCut && rootData && miniFat.length) {
+            const secs = [];
+            for (let s = e.start; s < 0xFFFFFFFA; s = miniFat[s]) {
+                secs.push(s);
+                if (secs.length > miniFat.length) break;
+            }
+            const buf = new Uint8Array(secs.length * miniSecSz);
+            secs.forEach((s, i) => buf.set(rootData.subarray(s*miniSecSz, (s+1)*miniSecSz), i*miniSecSz));
+            return buf.subarray(0, e.size);
+        }
+        return chain(e.start).subarray(0, e.size);
+    }
+
+    function propKey(pfx, id, type) {
+        return (pfx + '__SUBSTG1.0_' +
+            id.toString(16).toUpperCase().padStart(4,'0') +
+            type.toString(16).toUpperCase().padStart(4,'0')).toUpperCase();
+    }
+
+    function readStrAt(pfx, id) {
+        let e = map[propKey(pfx, id, 0x001F)];
+        if (e) {
+            const d = readStream(e);
+            let len = d.length;
+            while (len >= 2 && d[len-2] === 0 && d[len-1] === 0) len -= 2;
+            return new TextDecoder('utf-16le').decode(d.subarray(0, len));
+        }
+        e = map[propKey(pfx, id, 0x001E)];
+        if (e) {
+            const d = readStream(e);
+            let len = d.length;
+            while (len > 0 && d[len-1] === 0) len--;
+            return new TextDecoder('windows-1252').decode(d.subarray(0, len));
+        }
+        return '';
+    }
+
+    function readBinAt(pfx, id) {
+        const e = map[propKey(pfx, id, 0x0102)];
+        return e ? readStream(e) : null;
+    }
+
+    const ROOT = '/';
+
+    /* Data — BigInt dla precyzji 64-bit FILETIME, próbuj wszystkie PT_SYSTIME */
+    let dateStr = '';
+    const pe = map['/__PROPERTIES_VERSION1.0'];
+    if (pe) {
+        const pd  = readStream(pe);
+        const pdv = new DataView(pd.buffer, pd.byteOffset);
+        for (let i = 32; i + 16 <= pd.length; i += 16) {
+            if (pdv.getUint16(i, true) !== 0x0040) continue; // tylko PT_SYSTIME
+            const lo = BigInt(pdv.getUint32(i + 8,  true));
+            const hi = BigInt(pdv.getUint32(i + 12, true));
+            if (lo === 0n && hi === 0n) continue;
+            const ms = Number((hi * 0x100000000n + lo) / 10000n) - 11644473600000;
+            const d  = new Date(ms);
+            if (!isNaN(d) && d.getFullYear() > 1980) { dateStr = d.toUTCString(); break; }
+        }
+    }
+
+    /* Nadawca — SMTP ma priorytet nad Exchange DN */
+    const senderName  = readStrAt(ROOT, 0x0C1A);
+    const senderEmail = readStrAt(ROOT, 0x5D01)   // PR_SENDER_SMTP_ADDRESS
+                     || readStrAt(ROOT, 0x0C1F)   // PR_SENDER_EMAIL_ADDRESS
+                     || readStrAt(ROOT, 0x0065);   // PR_EMAIL_ADDRESS
+
+    /* Odbiorcy z sub-storageów __recip_version1.0_#XXXXXXXX */
+    function collectRecips() {
+        const to = [], cc = [], bcc = [];
+        for (const [key, entry] of Object.entries(map)) {
+            if (entry.type !== 1 || !key.includes('__RECIP_VERSION1.0_#')) continue;
+            const pfx = key + '/';
+            const name  = readStrAt(pfx, 0x3001);  // PR_DISPLAY_NAME
+            const email = readStrAt(pfx, 0x39FE)   // PR_SMTP_ADDRESS
+                       || readStrAt(pfx, 0x0076)   // PR_TRANSMITTABLE_DISPLAY_NAME
+                       || readStrAt(pfx, 0x3003);  // PR_EMAIL_ADDRESS
+            const recipType = (() => {
+                const e = map[propKey(pfx, 0x0C15, 0x0003)]; // PR_RECIPIENT_TYPE PT_LONG
+                if (!e) return 1;
+                const d = readStream(e);
+                return new DataView(d.buffer, d.byteOffset).getInt32(0, true);
+            })();
+            const formatted = (name && email && name !== email) ? `${name} <${email}>` : (email || name);
+            if      (recipType === 1) to.push(formatted);
+            else if (recipType === 2) cc.push(formatted);
+            else if (recipType === 3) bcc.push(formatted);
+        }
+        return { to: to.join('; '), cc: cc.join('; ') };
+    }
+    const recips = collectRecips();
+
+    /* Fallback: PR_DISPLAY_TO / PR_DISPLAY_CC gdy brak recipientów */
+    const displayTo = recips.to || readStrAt(ROOT, 0x0E04);
+    const displayCc = recips.cc || readStrAt(ROOT, 0x0E03);
+
+    /* Treść */
+    const bodyPlain = readStrAt(ROOT, 0x1000);
+    let bodyHTML = null;
+    // Próba 1: PR_HTML jako PT_BINARY (0x1013 / 0x0102)
+    const htmlBin = readBinAt(ROOT, 0x1013);
+    if (htmlBin && htmlBin.length > 0) {
+        const t = new TextDecoder('utf-8').decode(htmlBin);
+        bodyHTML = t.includes('\uFFFD') ? new TextDecoder('windows-1252').decode(htmlBin) : t;
+    }
+    // Próba 2: PR_HTML jako PT_STRING8 / PT_UNICODE
+    if (!bodyHTML) {
+        const htmlStr = readStrAt(ROOT, 0x1013);
+        if (htmlStr && htmlStr.trim().length > 0) bodyHTML = htmlStr;
+    }
+    // Próba 3: PR_BODY_HTML jako PT_UNICODE pod 0x1015
+    if (!bodyHTML) {
+        const htmlStr2 = readStrAt(ROOT, 0x1015);
+        if (htmlStr2 && /<[a-z]/i.test(htmlStr2)) bodyHTML = htmlStr2;
+    }
+    // Próba 4: body plain text zawiera HTML
+    if (!bodyHTML && bodyPlain && /<html[\s>]/i.test(bodyPlain)) {
+        bodyHTML = bodyPlain;
+    }
+
+    /* Załączniki */
+    function toBase64(bytes) {
+        let s = '', C = 8192;
+        for (let i = 0; i < bytes.length; i += C)
+            s += String.fromCharCode(...bytes.subarray(i, Math.min(i + C, bytes.length)));
+        return btoa(s);
+    }
+    const attachments = [];
+    for (const [key, entry] of Object.entries(map)) {
+        if (entry.type !== 1 || !key.includes('__ATTACH_VERSION1.0_#')) continue;
+        const pfx   = key + '/';
+        const fname = readStrAt(pfx, 0x3707) || readStrAt(pfx, 0x3704) || readStrAt(pfx, 0x3001) || 'attachment';
+        const mime  = readStrAt(pfx, 0x370E) || 'application/octet-stream';
+        const bin   = readBinAt(pfx, 0x3701);
+        if (bin && bin.length > 0)
+            attachments.push({ name: fname, mimeType: mime, data: toBase64(bin), encoding: 'base64' });
+    }
+
+
+    const from         = senderName ? `${senderName} <${senderEmail}>` : senderEmail;
+    const subject      = readStrAt(ROOT, 0x0037);
+    const replySubject = subject.startsWith('Re: ') ? subject : 'Re: ' + subject;
+    const body         = bodyPlain || (bodyHTML ? bodyHTML.replace(/<[^>]+>/g, '') : '');
+    const replyBody    = `\n\n${from} napisał(a):\n> ${body.split('\n').join('\n> ')}`;
+    const replyBodyHtml = bodyHTML
+        ? `<br><br><div>${from} napisał(a):</div><blockquote style="margin:0 0 0 .8ex;border-left:1px solid #ccc;padding-left:1ex">${bodyHTML}</blockquote>`
+        : null;
+
+    return {
+        email: senderEmail, from, to: displayTo, cc: displayCc, date: dateStr,
+        subject, replySubject, body, htmlBody: bodyHTML,
+        replyBody, replyBodyHtml, messageId: '', references: '', charset: 'utf-8', attachments
+    };
+}
 </script>
 </body>
 </html>
