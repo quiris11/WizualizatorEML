@@ -78,28 +78,35 @@ DESKTOP
 chmod 644 "$DESKTOP_FILE"
 echo "  ✔ Plik .desktop utworzony"
 
-# ── Rejestracja MIME type dla .msg ──
-MIME_DIR="$HOME/.local/share/mime/packages"
-MIME_FILE="$MIME_DIR/eml-gmail-msg.xml"
-mkdir -p "$MIME_DIR"
-cat > "$MIME_FILE" << 'MIMEXML'
+# ── Rejestracja MIME type dla .msg (glob weight=80 > domyslne 50) ──
+MIME_PKG_DIR="$HOME/.local/share/mime/packages"
+mkdir -p "$MIME_PKG_DIR"
+cat > "$MIME_PKG_DIR/eml-gmail-msg.xml" << 'MIMEXML'
 <?xml version="1.0" encoding="UTF-8"?>
 <mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
   <mime-type type="application/vnd.ms-outlook">
     <comment>Wiadomość Microsoft Outlook</comment>
-    <glob pattern="*.msg"/>
-    <magic priority="60">
-      <match type="string" offset="0" value="\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1"/>
-    </magic>
+    <glob pattern="*.msg" weight="80"/>
   </mime-type>
 </mime-info>
 MIMEXML
-if command -v update-mime-database &>/dev/null; then
-    update-mime-database "$HOME/.local/share/mime"
-    echo "  ✔ MIME type application/vnd.ms-outlook zarejestrowany"
+update-mime-database "$HOME/.local/share/mime" 2>/dev/null || true
+echo "  ✔ MIME type application/vnd.ms-outlook zarejestrowany"
+
+# ── Bezpośredni wpis do mimeapps.list ──
+MIMEAPPS="$HOME/.config/mimeapps.list"
+mkdir -p "$HOME/.config"
+touch "$MIMEAPPS"
+if grep -q "^\[Default Applications\]" "$MIMEAPPS" 2>/dev/null; then
+    if grep -q "^application/vnd.ms-outlook=" "$MIMEAPPS"; then
+        sed -i "s|^application/vnd.ms-outlook=.*|application/vnd.ms-outlook=eml-gmail.desktop|" "$MIMEAPPS"
+    else
+        sed -i "/^\[Default Applications\]/a application/vnd.ms-outlook=eml-gmail.desktop" "$MIMEAPPS"
+    fi
 else
-    echo "  ⚠ update-mime-database niedostępny — pomiń rejestrację MIME"
+    printf "\n[Default Applications]\napplication/vnd.ms-outlook=eml-gmail.desktop\n" >> "$MIMEAPPS"
 fi
+echo "  ✔ ~/.config/mimeapps.list zaktualizowany"
 
 # ── Aktualizacja bazy .desktop ──
 if command -v update-desktop-database &>/dev/null; then
