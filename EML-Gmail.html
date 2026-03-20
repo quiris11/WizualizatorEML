@@ -1192,9 +1192,11 @@ function parseMsgArrayBuffer(ab) {
     const subject      = readStrAt(ROOT, 0x0037);
     const replySubject = subject.startsWith('Re: ') ? subject : 'Re: ' + subject;
     const body         = bodyPlain || (bodyHTML ? bodyHTML.replace(/<[^>]+>/g, '') : '');
-    const replyBody    = `\n\n${from} napisał(a):\n> ${body.split('\n').join('\n> ')}`;
+    const dateFormatted = formatPolishDate(dateStr);
+    const quoteHeader   = dateFormatted ? `${dateFormatted} ${from} napisał(a):` : `${from} napisał(a):`;
+    const replyBody    = `\n\n${quoteHeader}\n> ${body.split('\n').join('\n> ')}`;
     const replyBodyHtml = bodyHTML
-        ? `<br><br><div>${from} napisał(a):</div><blockquote style="margin:0 0 0 .8ex;border-left:1px solid #ccc;padding-left:1ex">${bodyHTML}</blockquote>`
+        ? `<br><br><div>${quoteHeader}</div><blockquote style="margin:0 0 0 .8ex;border-left:1px solid #ccc;padding-left:1ex">${bodyHTML}</blockquote>`
         : null;
 
     return {
