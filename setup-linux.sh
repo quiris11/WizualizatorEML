@@ -71,7 +71,7 @@ Comment=Otwiera plik .eml jako lokalny podgląd HTML
 Exec=$BIN_DEST %f
 Icon=internet-mail
 Terminal=false
-MimeType=message/rfc822;
+MimeType=message/rfc822;application/vnd.ms-outlook;
 Categories=Network;Email;
 StartupNotify=false
 DESKTOP
@@ -87,7 +87,8 @@ fi
 # ── Rejestracja jako domyślna aplikacja ──
 if command -v xdg-mime &>/dev/null; then
     xdg-mime default eml-gmail.desktop message/rfc822
-    echo "  ✔ Ustawiono jako domyślną aplikację dla message/rfc822"
+    xdg-mime default eml-gmail.desktop application/vnd.ms-outlook
+    echo "  ✔ Ustawiono jako domyślną aplikację dla message/rfc822 i application/vnd.ms-outlook"
 
     # Weryfikacja
     DEFAULT=$(xdg-mime query default message/rfc822 2>/dev/null || echo "nieznana")
@@ -95,7 +96,7 @@ if command -v xdg-mime &>/dev/null; then
 else
     echo ""
     echo "  ⚠  xdg-mime niedostępny — ustaw domyślną aplikację ręcznie:"
-    echo "     Menedżer plików → PPM na plik .eml → Otwórz za pomocą"
+    echo "     Menedżer plików → PPM na plik .eml/.msg → Otwórz za pomocą"
     echo "     → Wizualizator EML → Ustaw jako domyślną"
 fi
 

@@ -97,8 +97,8 @@ plist["CFBundleDocumentTypes"]   = [{
     "CFBundleTypeName":       "Email Message",
     "CFBundleTypeRole":       "Viewer",
     "LSHandlerRank":          "Alternate",
-    "CFBundleTypeExtensions": ["eml"],
-    "CFBundleTypeMIMETypes":  ["message/rfc822"],
+    "CFBundleTypeExtensions": ["eml", "msg"],
+    "CFBundleTypeMIMETypes":  ["message/rfc822", "application/vnd.ms-outlook"],
     "LSItemContentTypes":     ["com.apple.mail.email", "public.email-message"],
 }]
 with open(plist_path, "wb") as f:

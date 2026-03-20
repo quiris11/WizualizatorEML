@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# eml-gmail — otwiera plik .eml jako lokalny self-contained HTML (bez serwera)
+# eml-gmail — otwiera plik .eml / .msg jako lokalny self-contained HTML (bez serwera)
 #
 # Instalacja:
 #   sudo cp eml-gmail.sh /usr/local/bin/eml-gmail
@@ -9,6 +9,7 @@
 #
 # Użycie:
 #   eml-gmail /ścieżka/do/wiadomość.eml
+#   eml-gmail /ścieżka/do/wiadomość.msg
 
 set -euo pipefail
 
