@@ -130,11 +130,12 @@ fi
 if command -v duti &>/dev/null; then
     duti -s "$BUNDLE_ID" com.apple.mail.email all
     duti -s "$BUNDLE_ID" .eml all
-    echo "  ✔ Ustawiono jako domyślną aplikację dla .eml"
+    duti -s "$BUNDLE_ID" .msg all
+    echo "  ✔ Ustawiono jako domyślną aplikację dla .eml / .msg"
 else
     echo ""
     echo "  ⚠  duti nie jest zainstalowane."
-    echo "     CLI:  brew install duti && duti -s $BUNDLE_ID .eml all"
+    echo "     CLI:  brew install duti && duti -s $BUNDLE_ID .eml all && duti -s $BUNDLE_ID .msg all"
     echo "     GUI:  PPM na plik .eml → Otwórz za pomocą → Inna aplikacja"
     echo "           → $APP_DIR → Zawsze otwieraj"
 fi
