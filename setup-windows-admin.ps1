@@ -18,7 +18,7 @@ $BAT_DST           = "$INSTALL_DIR\eml-gmail.bat"
 $UNINSTALLER_DST   = "$INSTALL_DIR\uninstall.ps1"
 $LAUNCHER_DST      = "$INSTALL_DIR\uninstall-launcher.bat"
 $PROG_ID           = "EML.Viewer"
-$iconPath          = "$env:SystemRoot\System32\shell32.dll,12"
+$iconPath          = "$env:SystemRoot\System32\msoe.dll,0"
 # -- Sprawdzenie plikow zrodlowych --
 if (-not (Test-Path $SCRIPT_SRC))   { Write-Error "Blad: brak $SCRIPT_SRC";   exit 1 }
 if (-not (Test-Path $TEMPLATE_SRC)) { Write-Error "Blad: brak $TEMPLATE_SRC"; exit 1 }
