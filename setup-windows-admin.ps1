@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 #Requires -RunAsAdministrator
 # setup-windows-admin.ps1 - instaluje Wizualizator EML dla WSZYSTKICH uzytkownikow
 #
@@ -19,6 +19,7 @@ $UNINSTALLER_DST   = "$INSTALL_DIR\uninstall.ps1"
 $LAUNCHER_DST      = "$INSTALL_DIR\uninstall-launcher.bat"
 $PROG_ID           = "EML.Viewer"
 $iconPath          = "$env:SystemRoot\System32\shell32.dll,70"
+
 # -- Sprawdzenie plikow zrodlowych --
 if (-not (Test-Path $SCRIPT_SRC))   { Write-Error "Blad: brak $SCRIPT_SRC";   exit 1 }
 if (-not (Test-Path $TEMPLATE_SRC)) { Write-Error "Blad: brak $TEMPLATE_SRC"; exit 1 }
@@ -66,12 +67,18 @@ $openCmd = "`"$psExe`" -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypa
 $regBase = "HKLM:\Software\Classes"
 
 foreach ($ext in @(".eml", ".msg")) {
-    New-Item -Force -Path "$regBase\$ext"                          | Out-Null
-    Set-ItemProperty -Path "$regBase\$ext" -Name "(Default)"       -Value $PROG_ID
-    New-Item -Force -Path "$regBase\$ext\OpenWithProgids"          | Out-Null
+    # Upewnij sie, ze klucz rozszerzenia istnieje (nie nadpisuj Default jesli juz jest)
+    if (-not (Test-Path "$regBase\$ext")) {
+        New-Item -Force -Path "$regBase\$ext" | Out-Null
+    }
+
+    # Rejestruj tylko w OpenWithProgids - nie zmieniaj domyslnego handlera
+    New-Item -Force -Path "$regBase\$ext\OpenWithProgids" | Out-Null
     Set-ItemProperty -Path "$regBase\$ext\OpenWithProgids" -Name $PROG_ID -Value "" -Type String
+    Write-Host "  OK Dodano $PROG_ID do OpenWithProgids dla $ext (domyslny handler zachowany)"
 }
 
+# -- Rejestracja ProgID EML.Viewer --
 New-Item -Force -Path "$regBase\$PROG_ID"                          | Out-Null
 Set-ItemProperty -Path "$regBase\$PROG_ID" -Name "(Default)"       -Value "Wizualizator EML"
 New-Item -Force -Path "$regBase\$PROG_ID\DefaultIcon"              | Out-Null
@@ -82,7 +89,7 @@ Set-ItemProperty -Path "$regBase\$PROG_ID\shell\open\command" -Name "(Default)" 
 New-Item -Force -Path "HKLM:\Software\RegisteredApplications"     | Out-Null
 Set-ItemProperty -Path "HKLM:\Software\RegisteredApplications" -Name "WizualizatorEML" `
     -Value "Software\Classes\$PROG_ID"
-Write-Host "  OK Skojarzenia .eml i .msg -> $PROG_ID zarejestrowane"
+Write-Host "  OK ProgID $PROG_ID zarejestrowany (.eml i .msg w OpenWithProgids)"
 
 # -- Rejestracja w Dodaj/Usun Programy (ARP) --
 Write-Host "Rejestracja w Dodaj/Usun Programy..."
