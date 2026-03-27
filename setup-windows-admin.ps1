@@ -9,16 +9,19 @@
 # Efekt:
 #   - Pliki instalowane w  %ProgramFiles%\eml-gmail\
 #   - Skojarzenie .eml i .msg w HKLM (wszystkie konta)
+#   - Wpis w Dodaj/Usun Programy
 
 $ErrorActionPreference = "Stop"
 
-$SCRIPT_SRC   = ".\eml-gmail.ps1"
-$TEMPLATE_SRC = ".\EML-Gmail.html"
-$INSTALL_DIR  = "$env:ProgramFiles\eml-gmail"
-$TEMPLATE_DST = "$INSTALL_DIR\index.html"
-$SCRIPT_DST   = "$INSTALL_DIR\eml-gmail.ps1"
-$BAT_DST      = "$INSTALL_DIR\eml-gmail.bat"
-$PROG_ID      = "EML.Viewer"
+$SCRIPT_SRC        = ".\eml-gmail.ps1"
+$TEMPLATE_SRC      = ".\EML-Gmail.html"
+$UNINSTALLER_SRC   = ".\uninstall-windows-admin.ps1"
+$INSTALL_DIR       = "$env:ProgramFiles\eml-gmail"
+$TEMPLATE_DST      = "$INSTALL_DIR\index.html"
+$SCRIPT_DST        = "$INSTALL_DIR\eml-gmail.ps1"
+$BAT_DST           = "$INSTALL_DIR\eml-gmail.bat"
+$UNINSTALLER_DST   = "$INSTALL_DIR\uninstall.ps1"
+$PROG_ID           = "EML.Viewer"
 
 # -- Sprawdzenie plikow zrodlowych --
 if (-not (Test-Path $SCRIPT_SRC))   { Write-Error "Blad: brak $SCRIPT_SRC";   exit 1 }
@@ -31,6 +34,14 @@ Copy-Item $TEMPLATE_SRC $TEMPLATE_DST -Force
 Copy-Item $SCRIPT_SRC   $SCRIPT_DST   -Force
 Write-Host "  OK Szablon HTML zainstalowany"
 Write-Host "  OK Skrypt PowerShell zainstalowany"
+
+# Skopiuj dezinstalator jesli istnieje w katalogu zrodlowym
+if (Test-Path $UNINSTALLER_SRC) {
+    Copy-Item $UNINSTALLER_SRC $UNINSTALLER_DST -Force
+    Write-Host "  OK Dezinstalator zainstalowany"
+} else {
+    Write-Warning "  UWAGA: brak $UNINSTALLER_SRC - dezinstalator nie zostal skopiowany"
+}
 
 # -- Wrapper .bat --
 $psExe = (Get-Command powershell.exe).Source
@@ -53,24 +64,40 @@ $openCmd = "`"$psExe`" -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypa
 $regBase = "HKLM:\Software\Classes"
 
 foreach ($ext in @(".eml", ".msg")) {
-    New-Item -Force -Path "$regBase\$ext"                            | Out-Null
-    Set-ItemProperty -Path "$regBase\$ext" -Name "(Default)"         -Value $PROG_ID
-    New-Item -Force -Path "$regBase\$ext\OpenWithProgids"           | Out-Null
+    New-Item -Force -Path "$regBase\$ext"                          | Out-Null
+    Set-ItemProperty -Path "$regBase\$ext" -Name "(Default)"       -Value $PROG_ID
+    New-Item -Force -Path "$regBase\$ext\OpenWithProgids"          | Out-Null
     Set-ItemProperty -Path "$regBase\$ext\OpenWithProgids" -Name $PROG_ID -Value "" -Type String
 }
 
-New-Item -Force -Path "$regBase\$PROG_ID"                           | Out-Null
-Set-ItemProperty -Path "$regBase\$PROG_ID" -Name "(Default)"         -Value "Wizualizator EML"
+New-Item -Force -Path "$regBase\$PROG_ID"                          | Out-Null
+Set-ItemProperty -Path "$regBase\$PROG_ID" -Name "(Default)"       -Value "Wizualizator EML"
 New-Item -Force -Path "$regBase\$PROG_ID\DefaultIcon"              | Out-Null
 Set-ItemProperty -Path "$regBase\$PROG_ID\DefaultIcon" -Name "(Default)" -Value "$psExe,0"
-New-Item -Force -Path "$regBase\$PROG_ID\shell\open\command"     | Out-Null
+New-Item -Force -Path "$regBase\$PROG_ID\shell\open\command"       | Out-Null
 Set-ItemProperty -Path "$regBase\$PROG_ID\shell\open\command" -Name "(Default)" -Value $openCmd
 
 # Rejestracja w RegisteredApplications
-New-Item -Force -Path "HKLM:\Software\RegisteredApplications"      | Out-Null
+New-Item -Force -Path "HKLM:\Software\RegisteredApplications"     | Out-Null
 Set-ItemProperty -Path "HKLM:\Software\RegisteredApplications" -Name "WizualizatorEML" `
     -Value "Software\Classes\$PROG_ID"
 Write-Host "  OK Skojarzenia .eml i .msg -> $PROG_ID zarejestrowane"
+
+# -- Rejestracja w Dodaj/Usun Programy (ARP) --
+Write-Host "Rejestracja w Dodaj/Usun Programy..."
+$arpKey = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\WizualizatorEML"
+New-Item -Force -Path $arpKey | Out-Null
+Set-ItemProperty -Path $arpKey -Name "DisplayName"     -Value "Wizualizator EML"
+Set-ItemProperty -Path $arpKey -Name "DisplayVersion"  -Value "1.0"
+Set-ItemProperty -Path $arpKey -Name "Publisher"       -Value "eml-gmail"
+Set-ItemProperty -Path $arpKey -Name "InstallDate"     -Value (Get-Date -Format "yyyyMMdd")
+Set-ItemProperty -Path $arpKey -Name "InstallLocation" -Value $INSTALL_DIR
+Set-ItemProperty -Path $arpKey -Name "DisplayIcon"     -Value "$psExe,0"
+Set-ItemProperty -Path $arpKey -Name "UninstallString" `
+    -Value "powershell.exe -NonInteractive -ExecutionPolicy Bypass -File `"$UNINSTALLER_DST`""
+Set-ItemProperty -Path $arpKey -Name "NoModify"        -Value 1 -Type DWord
+Set-ItemProperty -Path $arpKey -Name "NoRepair"        -Value 1 -Type DWord
+Write-Host "  OK Zarejestrowano w Dodaj/Usun Programy"
 
 # -- Powiadomienie Explorera --
 Add-Type -MemberDefinition '[DllImport("shell32.dll")] public static extern void SHChangeNotify(int e, uint f, IntPtr a, IntPtr b);' -Name WinAPI -Namespace Shell32 -ErrorAction SilentlyContinue
@@ -79,6 +106,6 @@ Write-Host "  OK Explorer powiadomiony o zmianie skojarzen"
 
 Write-Host ""
 Write-Host "Instalacja zakonczona!"
-Write-Host "  Skrypt  : $SCRIPT_DST"
-Write-Host "  Szablon : $TEMPLATE_DST"
-
+Write-Host "  Skrypt       : $SCRIPT_DST"
+Write-Host "  Szablon      : $TEMPLATE_DST"
+Write-Host "  Dezinstalator: $UNINSTALLER_DST"
