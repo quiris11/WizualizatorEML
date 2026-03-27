@@ -5,11 +5,6 @@
 # Uzycie (PowerShell jako Administrator):
 #   Set-ExecutionPolicy -Scope Process Bypass
 #   .\setup-windows-admin.ps1
-#
-# Efekt:
-#   - Pliki instalowane w  %ProgramFiles%\eml-gmail\
-#   - Skojarzenie .eml i .msg w HKLM (wszystkie konta)
-#   - Wpis w Dodaj/Usun Programy
 
 $ErrorActionPreference = "Stop"
 
@@ -21,6 +16,7 @@ $TEMPLATE_DST      = "$INSTALL_DIR\index.html"
 $SCRIPT_DST        = "$INSTALL_DIR\eml-gmail.ps1"
 $BAT_DST           = "$INSTALL_DIR\eml-gmail.bat"
 $UNINSTALLER_DST   = "$INSTALL_DIR\uninstall.ps1"
+$LAUNCHER_DST      = "$INSTALL_DIR\uninstall-launcher.bat"
 $PROG_ID           = "EML.Viewer"
 
 # -- Sprawdzenie plikow zrodlowych --
@@ -35,13 +31,19 @@ Copy-Item $SCRIPT_SRC   $SCRIPT_DST   -Force
 Write-Host "  OK Szablon HTML zainstalowany"
 Write-Host "  OK Skrypt PowerShell zainstalowany"
 
-# Skopiuj dezinstalator jesli istnieje w katalogu zrodlowym
 if (Test-Path $UNINSTALLER_SRC) {
     Copy-Item $UNINSTALLER_SRC $UNINSTALLER_DST -Force
     Write-Host "  OK Dezinstalator zainstalowany"
 } else {
     Write-Warning "  UWAGA: brak $UNINSTALLER_SRC - dezinstalator nie zostal skopiowany"
 }
+
+# -- Launcher dezinstalatora (prosba o UAC + widoczne okno) --
+$launcherContent = "@echo off`r`npowershell.exe -NoProfile -ExecutionPolicy Bypass -Command " +
+    "`"Start-Process powershell.exe -Verb RunAs " +
+    "-ArgumentList @('-NonInteractive','-ExecutionPolicy','Bypass','-File','%~dp0uninstall.ps1')`"`r`n"
+[System.IO.File]::WriteAllText($LAUNCHER_DST, $launcherContent, [System.Text.Encoding]::ASCII)
+Write-Host "  OK Launcher dezinstalatora zainstalowany"
 
 # -- Wrapper .bat --
 $psExe = (Get-Command powershell.exe).Source
@@ -58,7 +60,7 @@ if ($sysPath -notlike "*$INSTALL_DIR*") {
     Write-Host "  OK PATH systemowy juz zawiera katalog instalacji"
 }
 
-# -- Rejestracja skojarzenia w HKLM (dla wszystkich uzytkownikow) --
+# -- Rejestracja skojarzenia w HKLM --
 Write-Host "Rejestracja skojarzen w HKLM..."
 $openCmd = "`"$psExe`" -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$SCRIPT_DST`" `"%1`""
 $regBase = "HKLM:\Software\Classes"
@@ -77,7 +79,6 @@ Set-ItemProperty -Path "$regBase\$PROG_ID\DefaultIcon" -Name "(Default)" -Value 
 New-Item -Force -Path "$regBase\$PROG_ID\shell\open\command"       | Out-Null
 Set-ItemProperty -Path "$regBase\$PROG_ID\shell\open\command" -Name "(Default)" -Value $openCmd
 
-# Rejestracja w RegisteredApplications
 New-Item -Force -Path "HKLM:\Software\RegisteredApplications"     | Out-Null
 Set-ItemProperty -Path "HKLM:\Software\RegisteredApplications" -Name "WizualizatorEML" `
     -Value "Software\Classes\$PROG_ID"
@@ -87,16 +88,23 @@ Write-Host "  OK Skojarzenia .eml i .msg -> $PROG_ID zarejestrowane"
 Write-Host "Rejestracja w Dodaj/Usun Programy..."
 $arpKey = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\WizualizatorEML"
 New-Item -Force -Path $arpKey | Out-Null
-Set-ItemProperty -Path $arpKey -Name "DisplayName"     -Value "Wizualizator EML"
-Set-ItemProperty -Path $arpKey -Name "DisplayVersion"  -Value "1.0"
-Set-ItemProperty -Path $arpKey -Name "Publisher"       -Value "eml-gmail"
-Set-ItemProperty -Path $arpKey -Name "InstallDate"     -Value (Get-Date -Format "yyyyMMdd")
-Set-ItemProperty -Path $arpKey -Name "InstallLocation" -Value $INSTALL_DIR
-Set-ItemProperty -Path $arpKey -Name "DisplayIcon"     -Value "$psExe,0"
+Set-ItemProperty -Path $arpKey -Name "DisplayName"          -Value "Wizualizator EML"
+Set-ItemProperty -Path $arpKey -Name "DisplayVersion"       -Value "1.0"
+Set-ItemProperty -Path $arpKey -Name "Publisher"            -Value "eml-gmail"
+Set-ItemProperty -Path $arpKey -Name "InstallDate"          -Value (Get-Date -Format "yyyyMMdd")
+Set-ItemProperty -Path $arpKey -Name "InstallLocation"      -Value $INSTALL_DIR
+Set-ItemProperty -Path $arpKey -Name "DisplayIcon"          -Value "$psExe,0"
+Set-ItemProperty -Path $arpKey -Name "NoModify"             -Value 1 -Type DWord
+Set-ItemProperty -Path $arpKey -Name "NoRepair"             -Value 1 -Type DWord
+
+# Interaktywny: launcher .bat pyta o UAC i pokazuje okno PowerShell
 Set-ItemProperty -Path $arpKey -Name "UninstallString" `
-    -Value "powershell.exe -NonInteractive -ExecutionPolicy Bypass -File `"$UNINSTALLER_DST`""
-Set-ItemProperty -Path $arpKey -Name "NoModify"        -Value 1 -Type DWord
-Set-ItemProperty -Path $arpKey -Name "NoRepair"        -Value 1 -Type DWord
+    -Value "`"$LAUNCHER_DST`""
+
+# Cichy: bezposrednie wywolanie ps1 (dla RMM/Intune uruchamianych jako SYSTEM)
+Set-ItemProperty -Path $arpKey -Name "QuietUninstallString" `
+    -Value "powershell.exe -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$UNINSTALLER_DST`""
+
 Write-Host "  OK Zarejestrowano w Dodaj/Usun Programy"
 
 # -- Powiadomienie Explorera --
@@ -106,6 +114,7 @@ Write-Host "  OK Explorer powiadomiony o zmianie skojarzen"
 
 Write-Host ""
 Write-Host "Instalacja zakonczona!"
-Write-Host "  Skrypt       : $SCRIPT_DST"
-Write-Host "  Szablon      : $TEMPLATE_DST"
-Write-Host "  Dezinstalator: $UNINSTALLER_DST"
+Write-Host "  Skrypt        : $SCRIPT_DST"
+Write-Host "  Szablon       : $TEMPLATE_DST"
+Write-Host "  Dezinstalator : $UNINSTALLER_DST"
+Write-Host "  Launcher UAC  : $LAUNCHER_DST"
