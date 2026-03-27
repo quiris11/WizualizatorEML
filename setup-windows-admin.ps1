@@ -18,7 +18,7 @@ $BAT_DST           = "$INSTALL_DIR\eml-gmail.bat"
 $UNINSTALLER_DST   = "$INSTALL_DIR\uninstall.ps1"
 $LAUNCHER_DST      = "$INSTALL_DIR\uninstall-launcher.bat"
 $PROG_ID           = "EML.Viewer"
-
+$iconPath          = "$env:SystemRoot\System32\shell32.dll,12"
 # -- Sprawdzenie plikow zrodlowych --
 if (-not (Test-Path $SCRIPT_SRC))   { Write-Error "Blad: brak $SCRIPT_SRC";   exit 1 }
 if (-not (Test-Path $TEMPLATE_SRC)) { Write-Error "Blad: brak $TEMPLATE_SRC"; exit 1 }
@@ -75,7 +75,7 @@ foreach ($ext in @(".eml", ".msg")) {
 New-Item -Force -Path "$regBase\$PROG_ID"                          | Out-Null
 Set-ItemProperty -Path "$regBase\$PROG_ID" -Name "(Default)"       -Value "Wizualizator EML"
 New-Item -Force -Path "$regBase\$PROG_ID\DefaultIcon"              | Out-Null
-Set-ItemProperty -Path "$regBase\$PROG_ID\DefaultIcon" -Name "(Default)" -Value "$psExe,0"
+Set-ItemProperty -Path "$regBase\$PROG_ID\DefaultIcon" -Name "(Default)" -Value $iconPath
 New-Item -Force -Path "$regBase\$PROG_ID\shell\open\command"       | Out-Null
 Set-ItemProperty -Path "$regBase\$PROG_ID\shell\open\command" -Name "(Default)" -Value $openCmd
 
@@ -93,7 +93,7 @@ Set-ItemProperty -Path $arpKey -Name "DisplayVersion"       -Value "1.0"
 Set-ItemProperty -Path $arpKey -Name "Publisher"            -Value "eml-gmail"
 Set-ItemProperty -Path $arpKey -Name "InstallDate"          -Value (Get-Date -Format "yyyyMMdd")
 Set-ItemProperty -Path $arpKey -Name "InstallLocation"      -Value $INSTALL_DIR
-Set-ItemProperty -Path $arpKey -Name "DisplayIcon"          -Value "$psExe,0"
+Set-ItemProperty -Path $arpKey -Name "DisplayIcon"          -Value $iconPath
 Set-ItemProperty -Path $arpKey -Name "NoModify"             -Value 1 -Type DWord
 Set-ItemProperty -Path $arpKey -Name "NoRepair"             -Value 1 -Type DWord
 
