@@ -27,8 +27,8 @@ dla typu MIME `message/rfc822`, który obejmuje pliki `.eml`.
 **Na macOS** — instalator tworzy aplikację `.app` skompilowaną z AppleScript,
 która odbiera zdarzenia otwarcia pliku (`on open`) i przekazuje ścieżkę do skryptu.
 
-**Na Windows** — instalator rejestruje skojarzenie `.eml` w rejestrze systemowym
-(`HKCU\Software\Classes`) i wywołuje skrypt PowerShell przy każdym otwarciu pliku.
+**Na Windows** — instalator rejestruje aplikację w rejestrze systemowym
+(`HKLM\Software\Classes`) dla wszystkich użytkowników i wywołuje skrypt PowerShell przy każdym otwarciu pliku. Skojarzenie domyślne ustawiane jest przez GPO.
 
 ***
 
@@ -70,12 +70,13 @@ Jest to przydatne gdy:
 Wszystkie pliki muszą znajdować się w **tym samym katalogu**:
 
 ```
-EML-Gmail.html   ← szablon podglądu (wymagany)
-eml-gmail.sh         ← skrypt CLI Linux/macOS (wymagany)
-eml-gmail.ps1        ← skrypt CLI Windows (wymagany)
-setup-linux.sh       ← instalator Linux
-setup-macos.sh       ← instalator macOS
-setup-windows.ps1    ← instalator Windows
+EML-Gmail.html              ← szablon podglądu (wymagany)
+eml-gmail.sh                ← skrypt CLI Linux/macOS (wymagany)
+eml-gmail.ps1               ← skrypt CLI Windows (wymagany)
+setup-linux.sh              ← instalator Linux
+setup-macos.sh              ← instalator macOS
+setup-windows-admin.ps1     ← instalator Windows (wymaga uprawnień admina)
+uninstall-windows-admin.ps1 ← dezinstalator Windows
 ```
 
 
@@ -102,6 +103,7 @@ setup-windows.ps1    ← instalator Windows
 | :-- | :-- |
 | Windows 10 / 11 | PowerShell 5.1 wbudowany |
 | PowerShell 5.1+ | wbudowany — bez instalacji |
+| Uprawnienia administratora | wymagane przez `setup-windows-admin.ps1` |
 | Python 3 | **niewymagany** — skrypt używa wbudowanego Base64 PowerShell |
 
 
@@ -173,51 +175,49 @@ open -a "Wizualizator EML" ~/wiadomosc.eml       # symulacja dwukliku
 
 ## Instalacja — Windows (10 / 11)
 
-```powershell
-# Uruchom PowerShell w katalogu z plikami, następnie:
-Set-ExecutionPolicy -Scope Process Bypass
-.\setup-windows.ps1
+Instalator `setup-windows-admin.ps1` wymaga uprawnień administratora i instaluje aplikację dla **wszystkich użytkowników** na komputerze.
+
+```cmd
+:: Uruchom CMD jako Administrator, następnie:
+pushd \\serwer\udzial\WizualizatorEML && powershell.exe -ExecutionPolicy Bypass -File setup-windows-admin.ps1 && popd
 ```
 
 Instalator automatycznie:
 
-- Kopiuje skrypt CLI → `%LOCALAPPDATA%\eml-gmail\eml-gmail.ps1`
-- Kopiuje szablon HTML → `%LOCALAPPDATA%\eml-gmail\index.html`
+- Kopiuje skrypt CLI → `%ProgramFiles%\eml-gmail\eml-gmail.ps1`
+- Kopiuje szablon HTML → `%ProgramFiles%\eml-gmail\index.html`
+- Kopiuje dezinstalator → `%ProgramFiles%\eml-gmail\uninstall.ps1`
 - Tworzy wrapper `eml-gmail.bat` — wywołanie z CMD/PowerShell jako `eml-gmail`
-- Dodaje katalog instalacji do `PATH` użytkownika
-- Rejestruje skojarzenie `.eml` w rejestrze (`HKCU`) — **bez uprawnień admina**
+- Dodaje katalog instalacji do systemowego `PATH` (`HKLM`)
+- Rejestruje ProgID `EML.Viewer` w rejestrze systemowym (`HKLM\Software\Classes`)
+- Dodaje aplikację do `OpenWithProgids` dla `.eml` i `.msg` — **bez nadpisywania domyślnego handlera**
+- Rejestruje aplikację w Dodaj/Usuń Programy
 - Powiadamia Eksploratora Windows o zmianie skojarzeń
 
-**Test po instalacji** (w nowym oknie PowerShell/CMD):
+**Test po instalacji** (w nowym oknie CMD):
 
 ```cmd
 eml-gmail C:\Users\user\Pobrane\wiadomosc.eml
 ```
 
-> **Uwaga:** po instalacji uruchom **nowe** okno PowerShell lub CMD,
+> **Uwaga:** po instalacji uruchom **nowe** okno CMD lub PowerShell,
 > żeby zaktualizowany `PATH` zaczął obowiązywać.
 
-### Dlaczego Windows 11 nie ustawia domyślnej aplikacji automatycznie
+### Ustawienie domyślnej aplikacji przez GPO
 
-Windows 11 celowo blokuje programowe ustawianie domyślnych aplikacji przez rejestr. Klucz systemowy odpowiedzialny za skojarzenia plików jest chroniony wewnętrznym hashem — każda próba jego nadpisania z zewnątrz jest natychmiast cofana przez system. Jest to zabezpieczenie przed złośliwym oprogramowaniem, które mogłoby przejąć kontrolę nad otwieraniem plików bez wiedzy użytkownika.
+Instalator celowo **nie nadpisuje** domyślnego handlera `.eml`/`.msg` — zapobiega to uruchamianiu naprawy przez Office 2016/2019. Skojarzenie domyślne ustawia się przez GPO przy użyciu pliku XML:
 
-Instalator rejestruje aplikację jako **dostępną** opcję w menu „Otwórz za pomocą", jednak samo ustawienie jej jako domyślnej wymaga jednorazowego działania użytkownika:
-
-**Sposób 1 — prawy klik (najszybszy):**
-
-1. Kliknij prawym przyciskiem na dowolny plik `.eml`
-2. Wybierz: `Otwórz za pomocą` → `Wybierz inną aplikację`
-3. Zaznacz: **Wizualizator EML**
-4. Zaznacz: **Zawsze używaj tej aplikacji** → OK
-
-**Sposób 2 — przez Ustawienia:**
-
-```
-Ustawienia → Aplikacje → Domyślne aplikacje → wyszukaj: .eml
-Wybierz: Wizualizator EML
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<DefaultAssociations>
+    <Association Identifier=".eml" ProgId="EML.Viewer" ApplicationName="Wizualizator EML" />
+    <Association Identifier=".msg" ProgId="EML.Viewer" ApplicationName="Wizualizator EML" />
+</DefaultAssociations>
 ```
 
-Instalator na końcu pyta, czy otworzyć okno Ustawień automatycznie (`t/n`).
+Polityka: *Konfiguracja komputera → Szablony administracyjne → Składniki systemu Windows → Eksplorator plików → Ustaw plik konfiguracji domyślnych skojarzeń aplikacji*
+
+Skojarzenia są stosowane przy **logowaniu użytkownika** po `gpupdate /force`.
 
 ***
 
