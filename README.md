@@ -1,28 +1,27 @@
 # Wizualizator EML
 
-Lokalny podgląd plików `.eml` działający w przeglądarce internetowej.
+Lokalny podgląd plików `.eml` oraz `.msg` działający w przeglądarce internetowej.
 Wszystkie dane pozostają na komputerze — żaden plik nie jest wysyłany do sieci.
 
 ***
 
 ## Co to robi i jak to działa
 
-Wizualizator EML pozwala otwierać pliki `.eml` **dwuklikiem z menedżera plików**
+Wizualizator EML pozwala otwierać pliki `.eml` oraz `.msg` **dwuklikiem z menedżera plików**
 i wyświetla ich treść w **domyślnej przeglądarce internetowej**.
 
 Kolejność działania po dwukliku:
 
-1. System operacyjny kojarzy rozszerzenie `.eml` z aplikacją **Wizualizator EML**
+1. System operacyjny kojarzy rozszerzenie `.eml` oraz `.msg` z aplikacją **Wizualizator EML**
 2. System przekazuje ścieżkę klikniętego pliku do skryptu `eml-gmail`
-3. Skrypt wczytuje plik `.eml` i osadza jego zawartość w tymczasowym pliku HTML
+3. Skrypt wczytuje plik `.eml` lub `.msg` i osadza jego zawartość w tymczasowym pliku HTML
 4. Plik HTML otwiera się w domyślnej przeglądarce
 5. JavaScript parsuje wiadomość lokalnie i wyświetla:
     - nadawcę, odbiorcę, temat
     - treść wiadomości (HTML lub tekst)
     - załączniki z możliwością pobrania
 
-**Na Linuksie** — instalator rejestruje plik `.desktop` jako domyślną aplikację
-dla typu MIME `message/rfc822`, który obejmuje pliki `.eml`.
+**Na Linuksie** — instalator rejestruje plik `.desktop` jako domyślną aplikację do otwierania `.eml`oraz `.msg` 
 
 **Na macOS** — instalator tworzy aplikację `.app` skompilowaną z AppleScript,
 która odbiera zdarzenia otwarcia pliku (`on open`) i przekazuje ścieżkę do skryptu.
@@ -49,10 +48,10 @@ Wizualizator umożliwia wygodne odpowiadanie na wczytaną wiadomość przez Gmai
 
 ## Użycie bez instalacji — bezpośrednio w przeglądarce
 
-Plik `EML-Gmail.html` można używać **samodzielnie, bez instalacji**. Wystarczy otworzyć go w przeglądarce i wczytać plik `.eml` ręcznie:
+Plik `EML-Gmail.html` można używać **samodzielnie, bez instalacji**. Wystarczy otworzyć go w przeglądarce i wczytać plik `.eml` lub `.msg` ręcznie:
 
 1. Otwórz `EML-Gmail.html` w przeglądarce (dwuklik lub `Plik → Otwórz`)
-2. Przeciągnij plik `.eml` na strefę upuszczania **lub** kliknij `Wybierz plik .eml`
+2. Przeciągnij plik `.eml` lub `.msg` na strefę upuszczania **lub** kliknij `Wybierz plik .eml`
 3. Wizualizator wyświetli treść wiadomości
 
 Jest to przydatne gdy:
@@ -61,7 +60,7 @@ Jest to przydatne gdy:
 - używasz komputera bez uprawnień administratora (`sudo`)
 - chcesz udostępnić plik znajomemu — wystarczy wysłać sam `EML-Gmail.html`
 
-> **Uwaga:** w tym trybie dwuklik na plik `.eml` w menedżerze plików nie działa automatycznie — plik `.eml` trzeba wczytać ręcznie przez interfejs strony. Automatyczny dwuklik wymaga instalacji przez `setup-linux.sh`, `setup-macos.sh` lub `setup-windows.ps1`.
+> **Uwaga:** w tym trybie dwuklik na plik `.eml` lub `.msg` w menedżerze plików nie działa automatycznie — plik trzeba wczytać ręcznie przez interfejs strony. Automatyczny dwuklik wymaga instalacji przez `setup-linux.sh`, `setup-macos.sh` lub `setup-windows-admin.ps1`.
 
 ***
 
@@ -179,7 +178,7 @@ Instalator `setup-windows-admin.ps1` wymaga uprawnień administratora i instaluj
 
 ```cmd
 :: Uruchom CMD jako Administrator, następnie:
-pushd \\serwer\udzial\WizualizatorEML && powershell.exe -ExecutionPolicy Bypass -File setup-windows-admin.ps1 && popd
+powershell.exe -ExecutionPolicy Bypass -File setup-windows-admin.ps1
 ```
 
 Instalator automatycznie:
@@ -199,9 +198,6 @@ Instalator automatycznie:
 ```cmd
 eml-gmail C:\Users\user\Pobrane\wiadomosc.eml
 ```
-
-> **Uwaga:** po instalacji uruchom **nowe** okno CMD lub PowerShell,
-> żeby zaktualizowany `PATH` zaczął obowiązywać.
 
 ### Ustawienie domyślnej aplikacji przez GPO
 
