@@ -646,7 +646,8 @@ function parseEml(text) {
     if (htmlBody) {
         const quotedBody   = body.split('\n').map(l => '> ' + l).join('\n');
         const qhHtml       = `<div class="gmail_quote">${quoteHeader}<br></div>`;
-        replyBodyHtml = `<br><br><br>${qhHtml}<blockquote style="margin:0 0 0 0.8ex;border-left:1px solid #ccc;padding-left:1ex">${htmlBody}</blockquote>`;
+        const safeHtml     = sanitizeEmailHtml(htmlBody);
+        replyBodyHtml = `<br><br><br>${qhHtml}<blockquote style="margin:0 0 0 0.8ex;border-left:1px solid #ccc;padding-left:1ex">${safeHtml}</blockquote>`;
         replyBody     = `\n\n\n${quoteHeader}\n\n${quotedBody}`;
     } else {
         const quotedBody = body.split('\n').map(l => '> ' + l).join('\n');
@@ -1233,7 +1234,7 @@ function parseMsgArrayBuffer(ab) {
     const quoteHeader   = dateFormatted ? `${dateFormatted} ${from} napisał(a):` : `${from} napisał(a):`;
     const replyBody    = `\n\n${quoteHeader}\n> ${body.split('\n').join('\n> ')}`;
     const replyBodyHtml = bodyHTML
-        ? `<br><br><div>${quoteHeader}</div><blockquote style="margin:0 0 0 .8ex;border-left:1px solid #ccc;padding-left:1ex">${bodyHTML}</blockquote>`
+        ? `<br><br><div>${quoteHeader}</div><blockquote style="margin:0 0 0 .8ex;border-left:1px solid #ccc;padding-left:1ex">${sanitizeEmailHtml(bodyHTML)}</blockquote>`
         : null;
 
     return {
