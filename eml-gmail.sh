@@ -34,6 +34,15 @@ if [[ ! -f "$TEMPLATE" ]]; then
     exit 1
 fi
 
+
+# ── Sprawdzenie rozmiaru (limit 30 MB) ──
+MAX_BYTES=$((30 * 1024 * 1024))
+FILE_BYTES=$(wc -c < "$FILE")
+if (( FILE_BYTES > MAX_BYTES )); then
+    echo "Błąd: plik za duży ($(( FILE_BYTES / 1024 / 1024 )) MB). Limit: 30 MB." >&2
+    exit 1
+fi
+
 # ── Sprawdzenie python3 ──
 if ! command -v python3 &>/dev/null; then
     echo "Błąd: python3 nie jest zainstalowany." >&2
@@ -57,38 +66,46 @@ else
 fi
 
 python3 - "$FILE" "$TEMPLATE" "$TMPFILE" << 'PYEOF'
-import sys, base64, os
+import sys, base64, os, json
 
 eml_path      = sys.argv[1]
 template_path = sys.argv[2]
 output_path   = sys.argv[3]
 
+MAX_BYTES = 30 * 1024 * 1024
 with open(eml_path, 'rb') as f:
-    b64 = base64.b64encode(f.read()).decode('ascii')
+    raw = f.read(MAX_BYTES + 1)
+if len(raw) > MAX_BYTES:
+    sys.exit("Błąd: plik przekracza limit 30 MB")
 
-filename = os.path.basename(eml_path).replace('"', '\\"')
+b64      = base64.b64encode(raw).decode('ascii')
+# json.dumps zapewnia bezpieczne escapowanie: \, ", \n, </script itp.
+filename = json.dumps(os.path.basename(eml_path))
 
 with open(template_path, 'r', encoding='utf-8') as f:
     html = f.read()
 
 inject = (
     f'<script>'
-    f'window.EMBEDDED_EML="{b64}";'
-    f'window.EMBEDDED_EML_NAME="{filename}";'
+    f'window.EMBEDDED_EML={json.dumps(b64)};'
+    f'window.EMBEDDED_EML_NAME={filename};'
     f'</script>'
 )
-html = html.replace('</head>', inject + '\n</head>', 1)
+# Użyj rfind — DOMPurify zawiera literalne '</head>' w stringu JS,
+# replace(first) trafiłoby w nie zamiast w prawdziwy tag HTML.
+idx = html.rfind('</head>')
+html = html[:idx] + inject + '\n</head>' + html[idx+7:]
 
 with open(output_path, 'w', encoding='utf-8') as f:
     f.write(html)
 
-size_kb = len(b64) * 3 // 4 // 1024
+size_kb = len(raw) // 1024
 print(f"Wygenerowano: {output_path}  ({size_kb} KB)")
 PYEOF
 
-# Poczekaj chwilę aż przeglądarka wczyta plik, potem usuń
-# disown odłącza proces od powłoki — do shell script nie czeka na sleep
-sleep 2 && rm -f "$TMPFILE" &
+# Poczekaj aż przeglądarka wczyta plik, potem usuń
+# 10 sekund dla pewności przy dużych plikach lub wolnych maszynach
+sleep 10 && rm -f "$TMPFILE" &
 disown $!
 
 # ── Otwarcie przeglądarki ──
