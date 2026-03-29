@@ -91,7 +91,10 @@ inject = (
     f'window.EMBEDDED_EML_NAME={filename};'
     f'</script>'
 )
-html = html.replace('</head>', inject + '\n</head>', 1)
+# Użyj rfind — DOMPurify zawiera literalne '</head>' w stringu JS,
+# replace(first) trafiłoby w nie zamiast w prawdziwy tag HTML.
+idx = html.rfind('</head>')
+html = html[:idx] + inject + '\n</head>' + html[idx+7:]
 
 with open(output_path, 'w', encoding='utf-8') as f:
     f.write(html)

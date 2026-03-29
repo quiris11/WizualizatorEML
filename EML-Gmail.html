@@ -568,7 +568,7 @@ function replaceCidImages(html, cidMap) {
     return html.replace(/src=["']cid:([^"']+)["']/gi, (match, cid) => {
         const res = cidMap[cid] || cidMap[cid.split('@')[0]];
         if (res) return `src="data:${res.mimeType};base64,${res.data}"`;
-        return 'src=""';  // ukryj nieznane cid:
+        return 'src="data:,"';  // ukryj nieznane cid: — src="" powoduje błąd file:// w przeglądarce
     });
 }
 

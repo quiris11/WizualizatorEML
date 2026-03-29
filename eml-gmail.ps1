@@ -47,7 +47,9 @@ $filename = [System.IO.Path]::GetFileName($EmlFile) | ConvertTo-Json
 $b64Json  = $b64 | ConvertTo-Json
 $html     = [System.IO.File]::ReadAllText($TEMPLATE, [System.Text.Encoding]::UTF8)
 $inject   = "<script>window.EMBEDDED_EML=$b64Json;window.EMBEDDED_EML_NAME=$filename;</script>"
-$html     = $html.Replace('</head>', "$inject`n</head>")
+# Użyj LastIndexOf — DOMPurify zawiera '</head>' w stringu JS.
+$headIdx  = $html.LastIndexOf('</head>')
+$html     = $html.Substring(0, $headIdx) + "$inject`n</head>" + $html.Substring($headIdx + 7)
 
 # ── Zapis tymczasowego pliku HTML ──
 $tmpFile = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "eml-gmail-$PID.html")
