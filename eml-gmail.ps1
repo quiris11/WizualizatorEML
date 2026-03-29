@@ -42,9 +42,11 @@ $b64   = [System.Convert]::ToBase64String($bytes)
 Write-Host "base64: $($b64.Length) znaków"
 
 # ── Wstrzykiwanie danych do szablonu HTML ──
-$filename = [System.IO.Path]::GetFileName($EmlFile) -replace '"', '\"'
+# ConvertTo-Json zapewnia bezpieczne escapowanie: \, ", \n, </script itp.
+$filename = [System.IO.Path]::GetFileName($EmlFile) | ConvertTo-Json
+$b64Json  = $b64 | ConvertTo-Json
 $html     = [System.IO.File]::ReadAllText($TEMPLATE, [System.Text.Encoding]::UTF8)
-$inject   = "<script>window.EMBEDDED_EML=""$b64"";window.EMBEDDED_EML_NAME=""$filename"";</script>"
+$inject   = "<script>window.EMBEDDED_EML=$b64Json;window.EMBEDDED_EML_NAME=$filename;</script>"
 $html     = $html.Replace('</head>', "$inject`n</head>")
 
 # ── Zapis tymczasowego pliku HTML ──
@@ -57,7 +59,13 @@ Start-Process $tmpFile
 # ── Usunięcie pliku tymczasowego po 5 sekundach (w tle) ──
 $job = Start-Job -ScriptBlock {
     param($f)
-    Start-Sleep 5
+    Start-Sleep 10   # 10 sekund dla pewności przy dużych plikach
     Remove-Item $f -Force -ErrorAction SilentlyContinue
 } -ArgumentList $tmpFile
-$job | Out-Null
+# Rejestruj job do auto-cleanup — nie blokuj głównego wątku
+Register-ObjectEvent -InputObject $job -EventName StateChanged -Action {
+    if ($Event.SourceEventArgs.JobStateInfo.State -in 'Completed','Failed') {
+        $Event.SourceArgs[0] | Remove-Job -Force -ErrorAction SilentlyContinue
+        Unregister-Event -SubscriptionId $Event.EventIdentifier
+    }
+} | Out-Null
