@@ -20,99 +20,147 @@
     <title>Podgląd EML</title>
     <style>
         :root {
-            --bg: #f4f7f2;
-            --panel: #ffffff;
-            --ink: #1e2a1f;
-            --muted: #5a6b5a;
-            --accent: #2f7a48;
-            --accent-2: #c5e0cd;
-            --border: #d5e3d5;
-            --warn: #8f5f00;
-            --ok: #1f6e3a;
+            --bg:       #f0f2f5;
+            --panel:    #ffffff;
+            --ink:      #111827;
+            --muted:    #4b5563;
+            --subtle:   #6b7280;
+            --accent:   #1d4ed8;
+            --accent-h: #1e40af;
+            --accent-lt:#eff6ff;
+            --border:   #d1d5db;
+            --border-lt:#e5e7eb;
+            --ok:       #15803d;
+            --ok-bg:    #f0fdf4;
+            --ok-border:#bbf7d0;
+            --err:      #b91c1c;
+            --err-bg:   #fef2f2;
+            --err-border:#fecaca;
+            --label-bg: #f9fafb;
+            --radius:   10px;
+            --radius-lg:14px;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
         body {
-            font-family: "Avenir Next", "Segoe UI", Tahoma, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                         "Helvetica Neue", Arial, sans-serif;
+            font-size: 15px;
             color: var(--ink);
-            background:
-                radial-gradient(circle at 10% 10%, #e6f2e8 0%, transparent 45%),
-                radial-gradient(circle at 90% 85%, #e9f5ee 0%, transparent 40%),
-                var(--bg);
+            background: var(--bg);
             min-height: 100vh;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
         }
+
         .wrap {
-            max-width: 1100px;
-            margin: 32px auto;
-            padding: 0 16px 48px;
+            max-width: 900px;
+            margin: 36px auto;
+            padding: 0 20px 56px;
         }
+
+        /* ── Card ── */
         .card {
             background: var(--panel);
             border: 1px solid var(--border);
-            border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(25, 60, 35, 0.08);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.05);
             overflow: hidden;
         }
+
+        /* ── Header ── */
         .head {
-            padding: 20px 24px;
-            border-bottom: 1px solid var(--border);
-            background: linear-gradient(135deg, #f0f8f3 0%, #ffffff 75%);
+            padding: 20px 28px;
+            border-bottom: 1px solid var(--border-lt);
+            background: var(--panel);
         }
-        h1 { margin: 0 0 6px; font-size: 1.35rem; letter-spacing: 0.2px; }
-        .sub { margin: 0; color: var(--muted); font-size: 0.95rem; }
+        h1 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            letter-spacing: -0.2px;
+            color: var(--ink);
+            margin: 0 0 3px;
+        }
+        .sub {
+            margin: 0;
+            color: var(--muted);
+            font-size: 0.875rem;
+        }
 
-        .body { padding: 22px 24px; display: grid; gap: 14px; }
+        /* ── Body ── */
+        .body { padding: 24px 28px; display: grid; gap: 16px; }
 
-        /* Drop zone */
+        /* ── Drop zone ── */
         .drop-zone {
             border: 2px dashed var(--border);
-            border-radius: 12px;
-            padding: 28px 20px;
+            border-radius: var(--radius);
+            padding: 36px 24px;
             text-align: center;
             cursor: pointer;
-            transition: border-color 0.2s, background 0.2s;
-            background: #fbfefb;
+            transition: border-color 0.18s, background 0.18s;
+            background: var(--label-bg);
         }
         .drop-zone:hover, .drop-zone.dragover {
             border-color: var(--accent);
-            background: #f0f8f3;
+            background: var(--accent-lt);
         }
-        .drop-zone-icon { font-size: 32px; margin-bottom: 8px; }
-        .drop-zone-text { color: var(--ink); font-size: 0.95rem; font-weight: 500; margin-bottom: 4px; }
-        .drop-zone-subtext { color: var(--muted); font-size: 0.85rem; margin-bottom: 10px; }
+        .drop-zone-icon { font-size: 28px; margin-bottom: 10px; line-height: 1; }
+        .drop-zone-text {
+            color: var(--ink);
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 3px;
+        }
+        .drop-zone-subtext {
+            color: var(--subtle);
+            font-size: 0.82rem;
+            margin-bottom: 14px;
+        }
         #fileInput { display: none; }
 
-        /* Buttons — base */
+        /* ── Buttons — base ── */
         button {
-            border: 1px solid #26663d;
+            border: 1px solid var(--accent-h);
             background: var(--accent);
             color: #fff;
-            border-radius: 10px;
-            padding: 10px 16px;
-            font-weight: 600;
+            border-radius: 8px;
+            padding: 9px 18px;
+            font-weight: 500;
             cursor: pointer;
             font-family: inherit;
-            font-size: 0.92rem;
-            transition: opacity 0.15s;
+            font-size: 0.875rem;
+            line-height: 1.4;
+            transition: background 0.15s, border-color 0.15s;
         }
-        button:hover { opacity: 0.86; }
+        button:hover { background: var(--accent-h); border-color: var(--accent-h); }
+        button:focus-visible {
+            outline: 3px solid #93c5fd;
+            outline-offset: 2px;
+        }
         button:disabled { opacity: 0.45; cursor: not-allowed; }
 
-        /* Small action buttons */
+        /* ── Small action buttons ── */
         .btn-action {
             padding: 6px 14px;
-            font-size: 0.83rem;
-            border-radius: 8px;
+            font-size: 0.82rem;
+            border-radius: 7px;
             flex: 0 0 auto;
         }
-        .btn-action.btn-copy { background: var(--ok); border-color: var(--ok); }
+        .btn-action.btn-copy {
+            background: var(--ok);
+            border-color: #166534;
+        }
+        .btn-action.btn-copy:hover { background: #166534; }
         .btn-action.btn-secondary {
             background: #fff;
             color: var(--accent);
             border-color: var(--accent);
         }
+        .btn-action.btn-secondary:hover { background: var(--accent-lt); }
         .btn-action.btn-muted {
-            background: #6c757d;
-            border-color: #5a6268;
+            background: #6b7280;
+            border-color: #4b5563;
         }
         .btn-row {
             display: flex;
@@ -121,156 +169,257 @@
             align-items: center;
         }
 
-        /* Status */
+        /* ── Status ── */
         .status {
             display: none;
-            border: 1px dashed var(--border);
-            background: #fbfefb;
-            border-radius: 10px;
-            padding: 9px 12px;
-            font-size: 0.88rem;
+            border-radius: var(--radius);
+            padding: 9px 13px;
+            font-size: 0.855rem;
+            border: 1px solid var(--border);
+            background: var(--label-bg);
         }
-        .status.success { display: block; border-color: var(--accent-2); background: #f0f8f3; color: var(--ok); }
-        .status.error   { display: block; border-color: #f0c0c0; background: #fff5f5; color: #8a0000; }
+        .status.success {
+            display: block;
+            border-color: var(--ok-border);
+            background: var(--ok-bg);
+            color: var(--ok);
+        }
+        .status.error {
+            display: block;
+            border-color: var(--err-border);
+            background: var(--err-bg);
+            color: var(--err);
+        }
 
-        /* Metadata table */
+        /* ── Metadata table ── */
         .preview {
             display: none;
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: var(--radius);
             overflow: hidden;
         }
         .preview-row {
             display: grid;
-            grid-template-columns: 72px 1fr;
-            border-bottom: 1px solid var(--border);
+            grid-template-columns: 76px 1fr;
+            border-bottom: 1px solid var(--border-lt);
         }
         .preview-row:last-child { border-bottom: 0; }
         .preview-label {
-            font-size: 0.72rem;
+            font-size: 0.7rem;
             text-transform: uppercase;
-            letter-spacing: 0.4px;
-            font-weight: 700;
-            color: var(--muted);
-            padding: 10px 12px;
-            background: #f6fbf7;
-            border-right: 1px solid var(--border);
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            color: var(--subtle);
+            padding: 9px 12px;
+            background: var(--label-bg);
+            border-right: 1px solid var(--border-lt);
+            display: flex;
+            align-items: center;
         }
         .preview-value {
-            padding: 9px 12px;
-            font-size: 0.9rem;
+            padding: 8px 12px;
+            font-size: 0.875rem;
             color: var(--ink);
-            word-break: break-all;
+            word-break: break-word;
         }
 
-        /* Full body viewer */
+        /* ── Body viewer ── */
         .body-viewer {
             display: none;
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: var(--radius);
             overflow: hidden;
         }
         .body-viewer-head {
-            padding: 9px 14px;
-            background: #f6fbf7;
-            border-bottom: 1px solid var(--border);
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: var(--muted);
+            padding: 8px 14px;
+            background: var(--label-bg);
+            border-bottom: 1px solid var(--border-lt);
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--subtle);
             text-transform: uppercase;
-            letter-spacing: 0.4px;
+            letter-spacing: 0.5px;
             display: flex;
             align-items: center;
             gap: 8px;
         }
-        /* Shadow host — izolacja CSS maila od strony */
         .email-shadow-host {
             display: block;
             padding: 0;
             overflow: visible;
         }
         #bodyViewerContent pre {
-            padding: 14px 16px;
+            padding: 16px;
             white-space: pre-wrap;
-            font-family: "Avenir Next", "Segoe UI", Tahoma, Arial, sans-serif;
-            font-size: 0.88rem;
+            font-family: ui-monospace, "SF Mono", "Cascadia Code", "Consolas",
+                         "Liberation Mono", monospace;
+            font-size: 0.845rem;
             color: var(--ink);
             line-height: 1.65;
-
             margin: 0;
         }
 
-        /* Attachments */
+        /* ── Attachments ── */
         .att-section {
             display: none;
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: var(--radius);
             overflow: hidden;
         }
         .att-head {
-            padding: 9px 14px;
-            background: #f6fbf7;
-            border-bottom: 1px solid var(--border);
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: var(--muted);
+            padding: 8px 14px;
+            background: var(--label-bg);
+            border-bottom: 1px solid var(--border-lt);
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--subtle);
             text-transform: uppercase;
-            letter-spacing: 0.4px;
+            letter-spacing: 0.5px;
         }
         .att-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.9rem;
+            font-size: 0.875rem;
         }
         .att-table td {
             padding: 9px 12px;
-            border-bottom: 1px solid var(--border);
+            border-bottom: 1px solid var(--border-lt);
             vertical-align: middle;
         }
         .att-table tr:last-child td { border-bottom: 0; }
-        .att-icon { font-size: 1.2rem; }
+        .att-table tr:hover td { background: var(--label-bg); }
+        .att-icon { font-size: 1.15rem; }
         .att-name { font-weight: 500; color: var(--ink); }
-        .att-meta { font-size: 0.78rem; color: var(--muted); }
+        .att-meta { font-size: 0.77rem; color: var(--subtle); margin-top: 1px; }
+
         .pill {
             display: inline-block;
-            border: 1px solid var(--accent-2);
-            background: #f3fbf6;
-            color: var(--ok);
+            border: 1px solid var(--border);
+            background: var(--label-bg);
+            color: var(--muted);
             border-radius: 999px;
-            padding: 2px 8px;
-            font-size: 0.72rem;
-            font-weight: 700;
+            padding: 1px 8px;
+            font-size: 0.69rem;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
         }
         .btn-dl {
-            border: 1px solid var(--accent);
+            border: 1px solid var(--border);
             background: #fff;
-            color: var(--accent);
-            border-radius: 8px;
-            padding: 5px 11px;
+            color: var(--ink);
+            border-radius: 7px;
+            padding: 5px 12px;
             font-size: 0.78rem;
-            font-weight: 700;
+            font-weight: 500;
             cursor: pointer;
             font-family: inherit;
             white-space: nowrap;
-            transition: background 0.15s;
+            transition: background 0.14s, border-color 0.14s;
         }
-        .btn-dl:hover { background: #f0f8f3; }
+        .btn-dl:hover { background: var(--label-bg); border-color: #9ca3af; }
+        .btn-dl:focus-visible {
+            outline: 3px solid #93c5fd;
+            outline-offset: 2px;
+        }
 
-        /* Footer */
+        /* ── Footer ── */
         .footer {
-            padding: 14px 24px 18px;
+            padding: 16px 28px 20px;
             color: var(--muted);
-            font-size: 0.83rem;
-            border-top: 1px solid var(--border);
-            background: #fcfffc;
-            line-height: 1.7;
+            font-size: 0.82rem;
+            border-top: 1px solid var(--border-lt);
+            background: var(--label-bg);
+            line-height: 1.75;
         }
-        .footer strong { color: var(--ink); }
+        .footer strong { color: var(--ink); font-weight: 600; }
+
+        /* ── Header layout ── */
+        .head-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        /* ── Collapsible help ── */
+        .help-details { position: relative; }
+        .help-btn {
+            list-style: none;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: var(--accent);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 6px 12px;
+            background: var(--label-bg);
+            user-select: none;
+            white-space: nowrap;
+            transition: background 0.14s, border-color 0.14s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .help-btn::-webkit-details-marker { display: none; }
+        .help-btn::before {
+            content: "?";
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: #fff;
+            font-size: 0.7rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        .help-details[open] .help-btn {
+            background: var(--accent-lt);
+            border-color: #93c5fd;
+        }
+        .help-btn:hover { background: var(--accent-lt); border-color: #93c5fd; }
+        .help-panel {
+            position: absolute;
+            right: 0;
+            top: calc(100% + 6px);
+            width: 360px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: 0 4px 16px rgba(0,0,0,.1);
+            padding: 16px 18px;
+            z-index: 10;
+            font-size: 0.845rem;
+            color: var(--ink);
+            line-height: 1.6;
+        }
+        .help-panel ol {
+            padding-left: 18px;
+            margin: 0 0 10px;
+        }
+        .help-panel li { margin-bottom: 5px; }
+        .help-tip {
+            margin: 0;
+            color: var(--muted);
+            font-size: 0.8rem;
+            border-top: 1px solid var(--border-lt);
+            padding-top: 9px;
+        }
+
+        /* ── Footer (removed, keep rule minimal) ── */
+        .footer { display: none; }
 
         @media (max-width: 600px) {
-            .head, .body, .footer { padding-left: 14px; padding-right: 14px; }
-            h1 { font-size: 1.1rem; }
-            .preview-row { grid-template-columns: 56px 1fr; }
+            .help-panel { width: calc(100vw - 40px); right: auto; left: 0; }
+            .wrap { margin: 16px auto; }
+            .head, .body { padding-left: 16px; padding-right: 16px; }
+            h1 { font-size: 1.05rem; }
+            .preview-row { grid-template-columns: 54px 1fr; }
+            .head-row { flex-direction: column; align-items: flex-start; }
         }
     </style>
 </head>
@@ -279,14 +428,30 @@
   <div class="card">
 
     <div class="head">
-      <h1>📧 Wizualizator EML</h1>
-      <p class="sub">Podgląd i odpowiedź na wiadomości .eml — działa lokalnie w przeglądarce.</p>
+      <div class="head-row">
+        <div>
+          <h1>Wizualizator EML</h1>
+          <p class="sub">Podgląd i odpowiedź na wiadomości .eml oraz .msg.</p>
+        </div>
+        <details class="help-details">
+          <summary class="help-btn">Jak używać?</summary>
+          <div class="help-panel">
+            <ol>
+              <li>Wybierz lub przeciągnij plik .eml / .msg — treść i załączniki pojawią się automatycznie.</li>
+              <li>Kliknij <strong>Skopiuj cytowanie</strong> — kopiuje oryginalną wiadomość z formatowaniem HTML (jeśli dostępne).</li>
+              <li>Kliknij <strong>Odpowiedź w Gmail</strong> — otwiera nową wiadomość z uzupełnionym adresatem i tematem (Re:&nbsp;…).</li>
+              <li>Wklej skopiowaną treść (Ctrl+V) w pole wiadomości w Gmail, napisz odpowiedź i wyślij.</li>
+            </ol>
+            <p class="help-tip">Wiadomości multipart zachowują formatowanie (pogrubienia, kursywy, linki) przy wklejaniu w Gmail.</p>
+          </div>
+        </details>
+      </div>
     </div>
 
     <div class="body">
 
       <div class="drop-zone" id="dropZone">
-        <div class="drop-zone-icon">📁</div>
+        <div class="drop-zone-icon">📂</div>
         <div class="drop-zone-text">Przeciągnij plik .eml tutaj</div>
         <div class="drop-zone-subtext">lub</div>
         <button onclick="document.getElementById('fileInput').click()">Wybierz plik .eml</button>
@@ -326,34 +491,25 @@
       <!-- Full body viewer -->
       <div id="bodyViewer" class="body-viewer">
         <div class="body-viewer-head">
-          📄 Treść wiadomości &nbsp;<span id="bodyViewerType" class="pill"></span>
+          Treść wiadomości &nbsp;<span id="bodyViewerType" class="pill"></span>
         </div>
         <div id="bodyViewerContent"></div>
       </div>
 
       <!-- Attachments -->
       <div id="attSection" class="att-section">
-        <div class="att-head">📎 Załączniki</div>
+        <div class="att-head">Załączniki</div>
         <table class="att-table" id="attTable"><tbody id="attBody"></tbody></table>
       </div>
 
       <!-- Action buttons (small) -->
       <div id="actionBtns" class="btn-row" style="display:none">
-        <button class="btn-action btn-copy" id="copyBodyBtn">📋 Skopiuj cytowaną treść</button>
-        <button class="btn-action btn-secondary" id="openGmailBtn">✉️ Otwórz szkic odpowiedzi w Gmail</button>
+        <button class="btn-action btn-copy" id="copyBodyBtn">Skopiuj cytowaną treść</button>
+        <button class="btn-action btn-secondary" id="openGmailBtn">Odpowiedź w Gmail</button>
       </div>
 
     </div><!-- /body -->
 
-    <div class="footer">
-      <strong>ℹ️ Jak używać:</strong><br>
-      1. Wybierz lub przeciągnij plik .eml — treść i załączniki pojawią się automatycznie<br>
-      2. Kliknij „Skopiuj cytowaną treść" — skopiuje oryginalną wiadomość z formatowaniem HTML (jeśli dostępne)<br>
-      3. Kliknij „Otwórz szkic odpowiedzi w Gmail" — otworzy nową wiadomość z uzupełnionym adresatem i tematem (Re: …)<br>
-      4. Wklej skopiowaną treść (Ctrl+V) w pole wiadomości w Gmail<br>
-      5. Napisz swoją odpowiedź i wyślij<br><br>
-      <strong>💡 Wskazówka:</strong> Wiadomości multipart zachowują formatowanie (pogrubienia, kursywy, linki) przy wklejaniu w Gmail!
-    </div>
 
   </div>
 </div>
@@ -420,16 +576,16 @@ function processEmlFile(file) {
 
             const copyBtn = document.getElementById('copyBodyBtn');
             if (parsed.replyBodyHtml) {
-                copyBtn.textContent = '📋 Skopiuj cytowanie (z formatowaniem)';
+                copyBtn.textContent = 'Skopiuj cytowanie (z formatowaniem)';
                 copyBtn.className = 'btn-action btn-copy';
             } else {
-                copyBtn.textContent = '📋 Skopiuj cytowanie (tekst)';
+                copyBtn.textContent = 'Skopiuj cytowanie (tekst)';
                 copyBtn.className = 'btn-action btn-muted';
             }
             document.getElementById('actionBtns').style.display = 'flex';
 
             currentGmailUrl = buildGmailUrl(parsed);
-            showStatus('✔ Plik wczytany! Charset: ' + (parsed.charset || 'unknown'), 'success');
+            showStatus('Plik wczytany. Charset: ' + (parsed.charset || 'unknown'), 'success');
         } catch(err) {
             showStatus('Błąd parsowania pliku: ' + err.message, 'error');
             console.error(err);
@@ -520,7 +676,7 @@ function showAttachments(atts) {
               <div class="att-meta">${escHtml(att.mimeType)}</div></td>
           <td><span class="pill">${escHtml(ext)}</span></td>
           <td class="att-meta">${size}</td>
-          <td><button class="btn-dl" onclick="downloadAttachment(${i})">⬇ Pobierz</button></td>`;
+          <td><button class="btn-dl" onclick="downloadAttachment(${i})">Pobierz</button></td>`;
         tbody.appendChild(tr);
     });
 }
@@ -870,7 +1026,7 @@ function showStatus(message, type) {
 }
 
 document.getElementById('openGmailBtn').addEventListener('click', () => {
-    if (currentGmailUrl) { window.open(currentGmailUrl, '_blank'); showStatus('Gmail otwarty w nowej karcie', 'success'); }
+    if (currentGmailUrl) { window.open(currentGmailUrl, '_blank'); showStatus('Gmail otwarty w nowej karcie.', 'success'); }
 });
 
 document.getElementById('copyBodyBtn').addEventListener('click', async () => {
@@ -894,7 +1050,7 @@ document.getElementById('copyBodyBtn').addEventListener('click', async () => {
 
 /* ── Auto-load: embedded (plik lokalny) lub URL hash ── */
 function loadFromBase64(b64, filename) {
-    showStatus('⏳ Ładowanie pliku…', 'success');
+    showStatus('Ładowanie pliku…', 'success');
     try {
         const binary = atob(b64);
         const bytes  = new Uint8Array(binary.length);
@@ -963,16 +1119,16 @@ function processMsgFile(file) {
 
             const copyBtn = document.getElementById('copyBodyBtn');
             if (parsed.replyBodyHtml) {
-                copyBtn.textContent = '📋 Skopiuj cytowanie (z formatowaniem)';
+                copyBtn.textContent = 'Skopiuj cytowanie (z formatowaniem)';
                 copyBtn.className   = 'btn-action btn-copy';
             } else {
-                copyBtn.textContent = '📋 Skopiuj cytowanie (tekst)';
+                copyBtn.textContent = 'Skopiuj cytowanie (tekst)';
                 copyBtn.className   = 'btn-action btn-muted';
             }
             document.getElementById('actionBtns').style.display = 'flex';
 
             currentGmailUrl = buildGmailUrl(parsed);
-            showStatus('✔ Plik MSG wczytany!', 'success');
+            showStatus('Plik MSG wczytany.', 'success');
         } catch(err) {
             showStatus('Błąd parsowania MSG: ' + err.message, 'error');
             console.error(err);
