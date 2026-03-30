@@ -802,6 +802,12 @@ function parseEml(text) {
         const encoding = (headers['content-transfer-encoding'] || '').toLowerCase().trim();
         const charset  = extractCharset(contentType);
         body = decodeBody(body, encoding, charset);
+        // Top-level text/html (no multipart): treat decoded body as HTML
+        if (contentType.toLowerCase().includes('text/html')) {
+            htmlBody = body
+                .replace(/<meta\s+http-equiv\s*=\s*["']?content-type["']?[^>]*>/gi, '<meta charset="UTF-8">')
+                .replace(/<meta\s+charset\s*=[^>]*>/gi, '<meta charset="UTF-8">');
+        }
     }
 
     const from       = headers['from'] || '';
