@@ -14,7 +14,7 @@ param(
 )
 
 $TEMPLATE    = Join-Path $PSScriptRoot "index.html"
-$MAX_SIZE_MB = 30
+$MAX_SIZE_MB = 50
 
 # ── Sprawdzenie pliku ──
 if (-not (Test-Path $EmlFile)) {
