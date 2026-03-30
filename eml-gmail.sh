@@ -72,11 +72,11 @@ eml_path      = sys.argv[1]
 template_path = sys.argv[2]
 output_path   = sys.argv[3]
 
-MAX_BYTES = 30 * 1024 * 1024
+MAX_BYTES = 50 * 1024 * 1024
 with open(eml_path, 'rb') as f:
     raw = f.read(MAX_BYTES + 1)
 if len(raw) > MAX_BYTES:
-    sys.exit("Błąd: plik przekracza limit 30 MB")
+    sys.exit("Błąd: plik przekracza limit 50 MB")
 
 b64      = base64.b64encode(raw).decode('ascii')
 # json.dumps zapewnia bezpieczne escapowanie: \, ", \n, </script itp.
