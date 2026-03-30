@@ -35,11 +35,11 @@ if [[ ! -f "$TEMPLATE" ]]; then
 fi
 
 
-# ── Sprawdzenie rozmiaru (limit 30 MB) ──
+# ── Sprawdzenie rozmiaru (limit 50 MB) ──
 MAX_BYTES=$((50 * 1024 * 1024))
 FILE_BYTES=$(wc -c < "$FILE")
 if (( FILE_BYTES > MAX_BYTES )); then
-    echo "Błąd: plik za duży ($(( FILE_BYTES / 1024 / 1024 )) MB). Limit: 30 MB." >&2
+    echo "Błąd: plik za duży ($(( FILE_BYTES / 1024 / 1024 )) MB). Limit: 50 MB." >&2
     exit 1
 fi
 
